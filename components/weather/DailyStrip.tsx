@@ -1,6 +1,7 @@
 
 import React from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import { useRouter } from 'expo-router';
 import { colors } from '../../styles/commonStyles';
 import { DayForecast } from '../../types/weather';
 
@@ -17,9 +18,26 @@ interface Props {
 }
 
 export default function DailyStrip({ days, unit, mode = 'temperature' }: Props) {
+  const router = useRouter();
+
+  const handlePress = () => {
+    // Navigate to daily detail screen with data
+    router.push({
+      pathname: '/daily-detail',
+      params: {
+        dailyData: JSON.stringify(days),
+        mode: mode,
+        unit: unit,
+      },
+    });
+  };
+
   return (
     <View style={styles.card}>
-      <Text style={styles.title}>7-Day Forecast</Text>
+      <TouchableOpacity style={styles.titleRow} onPress={handlePress} activeOpacity={0.7}>
+        <Text style={styles.title}>7-Day Forecast</Text>
+        <Text style={styles.tapHint}>Tap for details</Text>
+      </TouchableOpacity>
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         <View style={styles.row}>
           {days.map((d) => (
@@ -64,12 +82,25 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     boxShadow: '0px 6px 16px rgba(0,0,0,0.25)',
   },
+  titleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+    paddingHorizontal: 4,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
   title: {
     color: colors.text,
     fontSize: 16,
     fontWeight: '700',
-    marginBottom: 8,
-    paddingHorizontal: 4,
+  },
+  tapHint: {
+    color: colors.text,
+    fontSize: 12,
+    opacity: 0.6,
+    fontStyle: 'italic',
   },
   row: {
     flexDirection: 'row',

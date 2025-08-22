@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, SafeAreaView, TouchableOpacity, Dim
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import Svg, { Path, Line, Text as SvgText, G } from 'react-native-svg';
 import { colors } from '../styles/commonStyles';
-import { HourForecast } from '../types/weather';
+import { DayForecast } from '../types/weather';
 import { Ionicons } from '@expo/vector-icons';
 
 type Mode = 'temperature' | 'precipitation' | 'wind' | 'humidity';
@@ -19,9 +19,9 @@ function degToCompass(deg?: number) {
   return arr[val % 16];
 }
 
-// Custom SVG Chart Component
-function SimpleLineChart({ data, width, height, mode, unit }: {
-  data: { x: number; y: number; label: string }[];
+// Custom SVG Chart Component for Daily Data
+function DailyLineChart({ data, width, height, mode, unit }: {
+  data: { x: number; y: number; label: string }[] | { highData: { x: number; y: number; label: string }[]; lowData: { x: number; y: number; label: string }[] };
   width: number;
   height: number;
   mode: Mode;
@@ -31,8 +31,44 @@ function SimpleLineChart({ data, width, height, mode, unit }: {
   const chartWidth = width - padding.left - padding.right;
   const chartHeight = height - padding.top - padding.bottom;
 
+  // Handle dual-line temperature mode vs single-line modes
+  const isTemperatureMode = mode === 'temperature' && 'highData' in data;
+  let yValues: number[];
+  let highPathData = '';
+  let lowPathData = '';
+  let singlePathData = '';
+  
+  if (isTemperatureMode) {
+    const tempData = data as { highData: { x: number; y: number; label: string }[]; lowData: { x: number; y: number; label: string }[] };
+    const highValues = tempData.highData.map(d => d.y);
+    const lowValues = tempData.lowData.map(d => d.y);
+    yValues = [...highValues, ...lowValues];
+    
+    // Create paths for both high and low lines
+    highPathData = tempData.highData.map((point, index) => {
+      const x = padding.left + (index / (tempData.highData.length - 1)) * chartWidth;
+      const y = padding.top + chartHeight - ((point.y - scaledMinY) / scaledRange) * chartHeight;
+      return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
+    }).join(' ');
+    
+    lowPathData = tempData.lowData.map((point, index) => {
+      const x = padding.left + (index / (tempData.lowData.length - 1)) * chartWidth;
+      const y = padding.top + chartHeight - ((point.y - scaledMinY) / scaledRange) * chartHeight;
+      return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
+    }).join(' ');
+  } else {
+    const singleData = data as { x: number; y: number; label: string }[];
+    yValues = singleData.map(d => d.y);
+    
+    // Create single path
+    singlePathData = singleData.map((point, index) => {
+      const x = padding.left + (index / (singleData.length - 1)) * chartWidth;
+      const y = padding.top + chartHeight - ((point.y - scaledMinY) / scaledRange) * chartHeight;
+      return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
+    }).join(' ');
+  }
+
   // Find min and max values for scaling
-  const yValues = data.map(d => d.y);
   const minY = Math.min(...yValues);
   const maxY = Math.max(...yValues);
   const yRange = maxY - minY;
@@ -55,13 +91,30 @@ function SimpleLineChart({ data, width, height, mode, unit }: {
     scaledMaxY = maxY + yPadding;
     scaledRange = scaledMaxY - scaledMinY;
   }
-
-  // Create path for the line
-  const pathData = data.map((point, index) => {
-    const x = padding.left + (index / (data.length - 1)) * chartWidth;
-    const y = padding.top + chartHeight - ((point.y - scaledMinY) / scaledRange) * chartHeight;
-    return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
-  }).join(' ');
+  
+  // Recalculate paths with proper scaling
+  if (isTemperatureMode) {
+    const tempData = data as { highData: { x: number; y: number; label: string }[]; lowData: { x: number; y: number; label: string }[] };
+    
+    highPathData = tempData.highData.map((point, index) => {
+      const x = padding.left + (index / (tempData.highData.length - 1)) * chartWidth;
+      const y = padding.top + chartHeight - ((point.y - scaledMinY) / scaledRange) * chartHeight;
+      return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
+    }).join(' ');
+    
+    lowPathData = tempData.lowData.map((point, index) => {
+      const x = padding.left + (index / (tempData.lowData.length - 1)) * chartWidth;
+      const y = padding.top + chartHeight - ((point.y - scaledMinY) / scaledRange) * chartHeight;
+      return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
+    }).join(' ');
+  } else {
+    const singleData = data as { x: number; y: number; label: string }[];
+    singlePathData = singleData.map((point, index) => {
+      const x = padding.left + (index / (singleData.length - 1)) * chartWidth;
+      const y = padding.top + chartHeight - ((point.y - scaledMinY) / scaledRange) * chartHeight;
+      return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
+    }).join(' ');
+  }
 
   // Y-axis labels
   const yTicks = 5;
@@ -131,10 +184,15 @@ function SimpleLineChart({ data, width, height, mode, unit }: {
         </SvgText>
       ))}
       
-      {/* X-axis labels */}
-      {data.filter((_, i) => i % 4 === 0).map((point, i) => {
-        const actualIndex = i * 4;
-        const x = padding.left + (actualIndex / (data.length - 1)) * chartWidth;
+      {/* X-axis labels (all days) */}
+      {(isTemperatureMode ? 
+        (data as { highData: { x: number; y: number; label: string }[]; lowData: { x: number; y: number; label: string }[] }).highData :
+        (data as { x: number; y: number; label: string }[])
+      ).map((point, i) => {
+        const totalPoints = isTemperatureMode ? 
+          (data as { highData: { x: number; y: number; label: string }[]; lowData: { x: number; y: number; label: string }[] }).highData.length :
+          (data as { x: number; y: number; label: string }[]).length;
+        const x = padding.left + (i / (totalPoints - 1)) * chartWidth;
         return (
           <SvgText
             key={i}
@@ -149,70 +207,100 @@ function SimpleLineChart({ data, width, height, mode, unit }: {
         );
       })}
       
-      {/* Data line */}
-      <Path
-        d={pathData}
-        stroke="#4A90E2"
-        strokeWidth="3"
-        fill="none"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+      {/* Data lines */}
+      {isTemperatureMode ? (
+        <>
+          {/* High temperature line (red) */}
+          <Path
+            d={highPathData}
+            stroke="#FF6B6B"
+            strokeWidth="2.5"
+            fill="none"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          {/* Low temperature line (blue) */}
+          <Path
+            d={lowPathData}
+            stroke="#4A90E2"
+            strokeWidth="2.5"
+            fill="none"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </>
+      ) : (
+        /* Single data line */
+        <Path
+          d={singlePathData}
+          stroke="#4A90E2"
+          strokeWidth="3"
+          fill="none"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      )}
     </Svg>
   );
 }
 
-export default function HourlyDetailScreen() {
+export default function DailyDetailScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const { width } = Dimensions.get('window');
   
-  // Parse the hourly data and mode from params
-  const hourlyData: HourForecast[] = params.hourlyData ? JSON.parse(params.hourlyData as string) : [];
+  // Parse the daily data and mode from params
+  const dailyData: DayForecast[] = params.dailyData ? JSON.parse(params.dailyData as string) : [];
   const mode = (params.mode as Mode) || 'temperature';
   const unit = (params.unit as string) || '';
 
   // Prepare chart data based on mode
   const chartData = useMemo(() => {
     if (mode === 'temperature') {
-      // For temperature, we need to get today's daily forecast to show high/low ranges
-      // Since hourly data doesn't include high/low per hour, we'll use the current temperature
-      // and estimate high/low based on daily forecast
-      const data = hourlyData.map((hour, index) => ({
+      // For temperature, prepare separate high and low data series
+      const highData = dailyData.map((day, index) => ({
         x: index,
-        y: hour.temperature,
-        label: hour.label,
+        y: day.max,
+        label: day.label,
       }));
       
-      console.log(`Hourly ${mode} data:`, data.map(d => d.y));
-      return data;
+      const lowData = dailyData.map((day, index) => ({
+        x: index,
+        y: day.min,
+        label: day.label,
+      }));
+      
+      console.log(`Daily temperature highs:`, highData.map(d => d.y));
+      console.log(`Daily temperature lows:`, lowData.map(d => d.y));
+      
+      return { highData, lowData };
     }
     
-    const data = hourlyData.map((hour, index) => {
+    const data = dailyData.map((day, index) => {
       let yValue = 0;
       switch (mode) {
         case 'precipitation':
-          yValue = hour.precipitationMm || 0;
+          yValue = day.precipSumMm || 0;
           break;
         case 'wind':
-          yValue = hour.windSpeed || 0;
+          yValue = day.windSpeedMax || 0;
           break;
         case 'humidity':
-          yValue = hour.humidity || 0;
+          yValue = day.humidityMean || 0;
           break;
       }
       return {
         x: index,
         y: yValue,
-        label: hour.label,
+        label: day.label,
       };
     });
     
     // Debug logging to help identify issues
-    console.log(`Hourly ${mode} data:`, data.map(d => d.y));
+    console.log(`Daily ${mode} data:`, data.map(d => d.y));
     
     return data;
-  }, [hourlyData, mode]);
+  }, [dailyData, mode]);
 
   // Get title and unit info
   const getTitle = () => {
@@ -242,17 +330,36 @@ export default function HourlyDetailScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>24-Hour {getTitle()}</Text>
+        <Text style={styles.headerTitle}>7-Day {getTitle()}</Text>
         <View style={styles.placeholder} />
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Chart Section */}
         <View style={styles.chartCard}>
-          <Text style={styles.chartTitle}>{getTitle()} Forecast</Text>
+          <Text style={styles.chartTitle}>
+            {getTitle()} Forecast
+            {mode === 'temperature' && (
+              <Text style={styles.chartSubtitle}>{'\n'}High & Low Temperatures</Text>
+            )}
+          </Text>
+          
+          {/* Legend for temperature mode */}
+          {mode === 'temperature' && (
+            <View style={styles.legend}>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendLine, { backgroundColor: '#FF6B6B' }]} />
+                <Text style={styles.legendText}>High</Text>
+              </View>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendLine, { backgroundColor: '#4A90E2' }]} />
+                <Text style={styles.legendText}>Low</Text>
+              </View>
+            </View>
+          )}
           
           <View style={styles.chartContainer}>
-            <SimpleLineChart
+            <DailyLineChart
               data={chartData}
               width={chartWidth}
               height={280}
@@ -262,36 +369,38 @@ export default function HourlyDetailScreen() {
           </View>
         </View>
 
-        {/* Hourly Strip */}
-        <View style={styles.hourlyCard}>
-          <Text style={styles.hourlyTitle}>Hourly Details</Text>
+        {/* Daily Strip */}
+        <View style={styles.dailyCard}>
+          <Text style={styles.dailyTitle}>7-Day Details</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View style={styles.hourlyRow}>
-              {hourlyData.map((hour) => (
-                <View key={hour.time} style={styles.hourlyItem}>
-                  <Text style={styles.hourlyLabel}>{hour.label}</Text>
-                  <Text style={styles.hourlyIcon}>{weatherIcon(hour.icon)}</Text>
+            <View style={styles.dailyRow}>
+              {dailyData.map((day) => (
+                <View key={day.date} style={styles.dailyItem}>
+                  <Text style={styles.dailyLabel}>{day.label}</Text>
+                  <Text style={styles.dailyIcon}>{weatherIcon(day.icon)}</Text>
                   
                   {mode === 'temperature' && (
-                    <Text style={styles.hourlyValue}>{Math.round(hour.temperature)}{unit}</Text>
+                    <Text style={styles.dailyValue}>
+                      {Math.round(day.max)}{unit} / {Math.round(day.min)}{unit}
+                    </Text>
                   )}
                   
                   {mode === 'precipitation' && (
                     <View style={{ alignItems: 'center' }}>
-                      <Text style={styles.hourlyValue}>{(hour.precipitationMm ?? 0).toFixed(1)}mm</Text>
-                      <Text style={styles.hourlySubText}>{Math.round(hour.precipitationProb ?? 0)}%</Text>
+                      <Text style={styles.dailyValue}>{(day.precipSumMm ?? 0).toFixed(1)}mm</Text>
+                      <Text style={styles.dailySubText}>{Math.round(day.precipProbMax ?? 0)}%</Text>
                     </View>
                   )}
                   
                   {mode === 'wind' && (
                     <View style={{ alignItems: 'center' }}>
-                      <Text style={styles.hourlyValue}>{Math.round(hour.windSpeed ?? 0)}{unit}</Text>
-                      <Text style={styles.hourlySubText}>{degToCompass(hour.windDirection)}</Text>
+                      <Text style={styles.dailyValue}>{Math.round(day.windSpeedMax ?? 0)}{unit}</Text>
+                      <Text style={styles.dailySubText}>{degToCompass(day.windDirectionDominant)}</Text>
                     </View>
                   )}
                   
                   {mode === 'humidity' && (
-                    <Text style={styles.hourlyValue}>{Math.round(hour.humidity ?? 0)}%</Text>
+                    <Text style={styles.dailyValue}>{Math.round(day.humidityMean ?? 0)}%</Text>
                   )}
                 </View>
               ))}
@@ -352,11 +461,37 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     textAlign: 'center',
   },
+  chartSubtitle: {
+    fontSize: 14,
+    fontWeight: '400',
+    opacity: 0.8,
+  },
+  legend: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginBottom: 16,
+    gap: 20,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  legendLine: {
+    width: 20,
+    height: 3,
+    borderRadius: 1.5,
+  },
+  legendText: {
+    color: colors.text,
+    fontSize: 12,
+    fontWeight: '500',
+  },
   chartContainer: {
     alignItems: 'center',
     justifyContent: 'center',
   },
-  hourlyCard: {
+  dailyCard: {
     backgroundColor: 'rgba(16, 24, 36, 0.6)',
     borderRadius: 20,
     paddingVertical: 20,
@@ -368,46 +503,46 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     elevation: 8,
   },
-  hourlyTitle: {
+  dailyTitle: {
     color: colors.text,
     fontSize: 18,
     fontWeight: '700',
     marginBottom: 16,
   },
-  hourlyRow: {
+  dailyRow: {
     flexDirection: 'row',
     gap: 12,
   },
-  hourlyItem: {
-    width: 76,
+  dailyItem: {
+    width: 90,
     alignItems: 'center',
     paddingVertical: 12,
     paddingHorizontal: 8,
     borderRadius: 16,
     backgroundColor: 'rgba(255,255,255,0.05)',
   },
-  hourlyLabel: {
+  dailyLabel: {
     color: colors.text,
     fontSize: 12,
     opacity: 0.85,
     marginBottom: 4,
   },
-  hourlyIcon: {
+  dailyIcon: {
     fontSize: 28,
     marginVertical: 6,
     color: colors.text,
   } as any,
-  hourlyValue: {
+  dailyValue: {
     color: colors.text,
     marginTop: 6,
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
     textAlign: 'center',
   },
-  hourlySubText: {
+  dailySubText: {
     color: colors.text,
     opacity: 0.75,
-    fontSize: 11,
+    fontSize: 10,
     marginTop: 2,
   },
 });
