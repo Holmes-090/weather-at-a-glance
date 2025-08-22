@@ -5,6 +5,8 @@ import Svg, { Path, Line, Text as SvgText, G } from 'react-native-svg';
 import { colors } from '../styles/commonStyles';
 import { DayForecast } from '../types/weather';
 import { Ionicons } from '@expo/vector-icons';
+import CompassRose from '../components/weather/CompassRose';
+import HumidityBar from '../components/weather/HumidityBar';
 
 type Mode = 'temperature' | 'precipitation' | 'wind' | 'humidity';
 
@@ -377,7 +379,27 @@ export default function DailyDetailScreen() {
               {dailyData.map((day) => (
                 <View key={day.date} style={styles.dailyItem}>
                   <Text style={styles.dailyLabel}>{day.label}</Text>
-                  <Text style={styles.dailyIcon}>{weatherIcon(day.icon)}</Text>
+                  
+                  {/* Conditional icon rendering based on mode */}
+                  <View style={styles.dailyIconContainer}>
+                    {mode === 'wind' ? (
+                      <CompassRose 
+                        windDirection={day.windDirectionDominant} 
+                        size={28} 
+                        color={colors.text} 
+                      />
+                    ) : mode === 'humidity' ? (
+                      <HumidityBar 
+                        humidity={day.humidityMean} 
+                        width={14} 
+                        height={26}
+                        fillColor="#4A90E2"
+                        borderColor={colors.text}
+                      />
+                    ) : (
+                      <Text style={styles.dailyIcon}>{weatherIcon(day.icon)}</Text>
+                    )}
+                  </View>
                   
                   {mode === 'temperature' && (
                     <Text style={styles.dailyValue}>
@@ -526,6 +548,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     opacity: 0.85,
     marginBottom: 4,
+  },
+  dailyIconContainer: {
+    height: 32,
+    marginVertical: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   dailyIcon: {
     fontSize: 28,

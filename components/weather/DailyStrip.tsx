@@ -4,6 +4,8 @@ import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-nati
 import { useRouter } from 'expo-router';
 import { colors } from '../../styles/commonStyles';
 import { DayForecast } from '../../types/weather';
+import CompassRose from './CompassRose';
+import HumidityBar from './HumidityBar';
 
 function weatherIcon(icon: string) {
   return icon;
@@ -43,7 +45,28 @@ export default function DailyStrip({ days, unit, mode = 'temperature' }: Props) 
           {days.map((d) => (
             <View key={d.date} style={styles.item}>
               <Text style={styles.label}>{d.label}</Text>
-              <Text style={styles.icon}>{weatherIcon(d.icon)}</Text>
+              
+              {/* Conditional icon rendering based on mode */}
+              <View style={styles.iconContainer}>
+                {mode === 'wind' ? (
+                  <CompassRose 
+                    windDirection={d.windDirectionDominant} 
+                    size={24} 
+                    color={colors.text} 
+                  />
+                ) : mode === 'humidity' ? (
+                  <HumidityBar 
+                    humidity={d.humidityMean} 
+                    width={12} 
+                    height={22}
+                    fillColor="#4A90E2"
+                    borderColor={colors.text}
+                  />
+                ) : (
+                  <Text style={styles.icon}>{weatherIcon(d.icon)}</Text>
+                )}
+              </View>
+              
               {mode === 'temperature' && (
                 <Text style={styles.value}>
                   {Math.round(d.max)}{unit} / {Math.round(d.min)}{unit}
@@ -116,6 +139,12 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 12,
     opacity: 0.85,
+  },
+  iconContainer: {
+    height: 28,
+    marginTop: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   icon: {
     fontSize: 24,

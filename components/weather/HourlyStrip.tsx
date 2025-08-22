@@ -4,6 +4,8 @@ import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-nati
 import { useRouter } from 'expo-router';
 import { colors } from '../../styles/commonStyles';
 import { HourForecast } from '../../types/weather';
+import CompassRose from './CompassRose';
+import HumidityBar from './HumidityBar';
 
 function weatherIcon(codeIcon: string) {
   return codeIcon;
@@ -43,7 +45,28 @@ export default function HourlyStrip({ hours, unit, mode = 'temperature' }: Props
           {hours.map((h) => (
             <View key={h.time} style={styles.item}>
               <Text style={styles.label}>{h.label}</Text>
-              <Text style={styles.icon}>{weatherIcon(h.icon)}</Text>
+              
+              {/* Conditional icon rendering based on mode */}
+              <View style={styles.iconContainer}>
+                {mode === 'wind' ? (
+                  <CompassRose 
+                    windDirection={h.windDirection} 
+                    size={26} 
+                    color={colors.text} 
+                  />
+                ) : mode === 'humidity' ? (
+                  <HumidityBar 
+                    humidity={h.humidity} 
+                    width={12} 
+                    height={24}
+                    fillColor="#4A90E2"
+                    borderColor={colors.text}
+                  />
+                ) : (
+                  <Text style={styles.icon}>{weatherIcon(h.icon)}</Text>
+                )}
+              </View>
+              
               {mode === 'temperature' && (
                 <Text style={styles.valueText}>{Math.round(h.temperature)}{unit}</Text>
               )}
@@ -120,6 +143,12 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 12,
     opacity: 0.85,
+  },
+  iconContainer: {
+    height: 30,
+    marginTop: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   icon: {
     fontSize: 26,

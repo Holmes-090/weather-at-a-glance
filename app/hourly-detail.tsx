@@ -5,6 +5,8 @@ import Svg, { Path, Line, Text as SvgText, G } from 'react-native-svg';
 import { colors } from '../styles/commonStyles';
 import { HourForecast } from '../types/weather';
 import { Ionicons } from '@expo/vector-icons';
+import CompassRose from '../components/weather/CompassRose';
+import HumidityBar from '../components/weather/HumidityBar';
 
 type Mode = 'temperature' | 'precipitation' | 'wind' | 'humidity';
 
@@ -270,7 +272,27 @@ export default function HourlyDetailScreen() {
               {hourlyData.map((hour) => (
                 <View key={hour.time} style={styles.hourlyItem}>
                   <Text style={styles.hourlyLabel}>{hour.label}</Text>
-                  <Text style={styles.hourlyIcon}>{weatherIcon(hour.icon)}</Text>
+                  
+                  {/* Conditional icon rendering based on mode */}
+                  <View style={styles.hourlyIconContainer}>
+                    {mode === 'wind' ? (
+                      <CompassRose 
+                        windDirection={hour.windDirection} 
+                        size={28} 
+                        color={colors.text} 
+                      />
+                    ) : mode === 'humidity' ? (
+                      <HumidityBar 
+                        humidity={hour.humidity} 
+                        width={14} 
+                        height={26}
+                        fillColor="#4A90E2"
+                        borderColor={colors.text}
+                      />
+                    ) : (
+                      <Text style={styles.hourlyIcon}>{weatherIcon(hour.icon)}</Text>
+                    )}
+                  </View>
                   
                   {mode === 'temperature' && (
                     <Text style={styles.hourlyValue}>{Math.round(hour.temperature)}{unit}</Text>
@@ -391,6 +413,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     opacity: 0.85,
     marginBottom: 4,
+  },
+  hourlyIconContainer: {
+    height: 32,
+    marginVertical: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   hourlyIcon: {
     fontSize: 28,
