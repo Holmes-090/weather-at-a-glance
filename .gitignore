@@ -1,0 +1,70 @@
+node_modules/
+
+.git/
+.expo/
+
+dist/
+web-build/
+expo-env.d.ts
+
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+.metro-health-check*
+
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+.DS_Store
+*.pem
+
+# Environment variables and secrets
+.env
+.env*.local
+.env.development
+.env.production
+.env.staging
+
+# Build and cache files
+*.tsbuildinfo
+
+# Platform-specific directories
+.natively/
+android/
+ios/
+
+# Deployment
+netlify.toml
+.netlify/
+
+# Package manager files
+pnpm-lock.yaml
+package-lock.json
+
+# Additional security
+*.log
+*.tmp
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# System files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Temporary files
+.temp/
+.cache/
