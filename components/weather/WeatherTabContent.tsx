@@ -1,15 +1,18 @@
 
 import { useMemo, useRef } from 'react';
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator, Alert, TouchableOpacity } from 'react-native';
+import { useRouter } from 'expo-router';
 import { colors } from '../../styles/commonStyles';
 import SearchBar from '../SearchBar';
 import UnitToggleSheet from '../UnitToggleSheet';
 import WeatherBackground from './WeatherBackground';
 import HourlyStrip from './HourlyStrip';
 import DailyStrip from './DailyStrip';
+import WeatherAlert from './WeatherAlert';
 import { useUnits } from '../..//components/UnitsContext';
 import { useLocation } from '../..//components/LocationContext';
 import { useWeather } from '../../hooks/useWeather';
+import { useWeatherAlerts } from '../../hooks/useWeatherAlerts';
 
 type Mode = 'temperature' | 'precipitation' | 'wind' | 'humidity';
 
@@ -21,8 +24,10 @@ export default function WeatherTabContent({ mode }: Props) {
   const { units, setUnits } = useUnits();
   const { location, setLocation } = useLocation();
   const sheetRef = useRef<any>(null);
+  const router = useRouter();
 
   const { data, loading, error } = useWeather(location.latitude, location.longitude, units);
+  const { alerts, dismissAlert } = useWeatherAlerts(location.latitude, location.longitude);
 
   if (error) {
     console.log('Weather error', error);
@@ -123,7 +128,28 @@ export default function WeatherTabContent({ mode }: Props) {
             onSelectCity={onCitySelected}
             onOptionsPress={() => sheetRef.current?.expand?.()}
           />
+          
+          {/* DEMO BUTTON - REMOVE IN PRODUCTION */}
+          <TouchableOpacity 
+            style={styles.demoButton}
+            onPress={() => router.push('/demo-alerts')}
+          >
+            <Text style={styles.demoButtonText}>🧪 Test Alerts</Text>
+          </TouchableOpacity>
         </View>
+
+        {/* Weather Alerts */}
+        {alerts.length > 0 && (
+          <View style={styles.alertsContainer}>
+            {alerts.map((alert) => (
+              <WeatherAlert
+                key={alert.id}
+                alert={alert}
+                onDismiss={dismissAlert}
+              />
+            ))}
+          </View>
+        )}
 
         <View style={styles.currentCard}>
           <Text style={styles.cityName}>
@@ -183,6 +209,22 @@ const styles = StyleSheet.create({
   },
   topRow: {
     width: '100%',
+  },
+  alertsContainer: {
+    marginTop: 4,
+  },
+  demoButton: {
+    backgroundColor: 'rgba(255, 165, 0, 0.8)',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    marginTop: 8,
+    alignSelf: 'center',
+  },
+  demoButtonText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
   },
   currentCard: {
     backgroundColor: 'rgba(16, 24, 36, 0.35)',

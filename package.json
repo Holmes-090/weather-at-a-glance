@@ -61,7 +61,8 @@
     "victory-native": "^41.19.2",
     "workbox-cli": "^7.3.0",
     "workbox-precaching": "^7.3.0",
-    "workbox-webpack-plugin": "^7.3.0"
+    "workbox-webpack-plugin": "^7.3.0",
+    "@react-native-async-storage/async-storage": "2.1.2"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
