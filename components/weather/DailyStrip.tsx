@@ -23,6 +23,7 @@ export default function DailyStrip({ days, unit, mode = 'temperature' }: Props) 
   const router = useRouter();
 
   const handlePress = () => {
+    console.log(`Navigating to daily detail with mode: ${mode}, unit: ${unit}`);
     // Navigate to daily detail screen with data
     router.push({
       pathname: '/daily-detail',
@@ -36,7 +37,7 @@ export default function DailyStrip({ days, unit, mode = 'temperature' }: Props) 
 
   return (
     <View style={styles.card}>
-      <TouchableOpacity style={styles.titleRow} onPress={handlePress} activeOpacity={0.7}>
+      <TouchableOpacity style={styles.titleRow} onPress={handlePress} activeOpacity={0.7} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
         <Text style={styles.title}>7-Day Forecast</Text>
         <Text style={styles.tapHint}>Tap for details</Text>
       </TouchableOpacity>

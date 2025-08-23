@@ -61,8 +61,28 @@ export function useWeather(lat: number, lon: number, units: 'metric' | 'imperial
           humidity: hourlyHumidity[i],
         }));
 
-        // Index for now
-        const nowIndex = hourlyTimes.findIndex((t) => t === nowIso);
+        // Index for now - need to find the current or next hour
+        let nowIndex = hourlyTimes.findIndex((t) => t === nowIso);
+        
+        // If exact match not found, find the current hour by comparing hour values
+        if (nowIndex === -1) {
+          const currentTime = new Date(nowIso);
+          const currentHour = currentTime.getHours();
+          
+          nowIndex = hourlyTimes.findIndex((t) => {
+            const hourTime = new Date(t);
+            return hourTime.getHours() === currentHour && 
+                   hourTime.getDate() === currentTime.getDate();
+          });
+          
+          // If still not found, find the next available hour
+          if (nowIndex === -1) {
+            nowIndex = hourlyTimes.findIndex((t) => {
+              const hourTime = new Date(t);
+              return hourTime >= currentTime;
+            });
+          }
+        }
         
         // Filter hourly data to start from current hour (no past data)
         const currentHourIndex = Math.max(0, nowIndex);

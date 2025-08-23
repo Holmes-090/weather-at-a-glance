@@ -415,7 +415,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   hourlyIconContainer: {
-    height: 32,
+    height: 36,
     marginVertical: 6,
     alignItems: 'center',
     justifyContent: 'center',

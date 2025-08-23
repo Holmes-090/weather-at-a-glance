@@ -149,12 +149,12 @@ export default function WeatherTabContent({ mode }: Props) {
           <>
             <HourlyStrip
               hours={data.hourly}
-              unit={mode === 'temperature' ? tempUnit : mode === 'wind' ? windUnit : ''}
+              unit={mode === 'temperature' ? tempUnit : mode === 'wind' ? windUnit : mode === 'precipitation' ? 'mm' : '%'}
               mode={mode}
             />
             <DailyStrip
               days={data.daily}
-              unit={mode === 'temperature' ? tempUnit : mode === 'wind' ? windUnit : ''}
+              unit={mode === 'temperature' ? tempUnit : mode === 'wind' ? windUnit : mode === 'precipitation' ? 'mm' : '%'}
               mode={mode}
             />
           </>

@@ -23,6 +23,7 @@ export default function HourlyStrip({ hours, unit, mode = 'temperature' }: Props
   const router = useRouter();
 
   const handlePress = () => {
+    console.log(`Navigating to hourly detail with mode: ${mode}, unit: ${unit}`);
     // Navigate to hourly detail screen with data
     router.push({
       pathname: '/hourly-detail',
@@ -36,7 +37,7 @@ export default function HourlyStrip({ hours, unit, mode = 'temperature' }: Props
 
   return (
     <View style={styles.card}>
-      <TouchableOpacity style={styles.titleRow} onPress={handlePress} activeOpacity={0.7}>
+      <TouchableOpacity style={styles.titleRow} onPress={handlePress} activeOpacity={0.7} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
         <Text style={styles.title}>Hourly</Text>
         <Text style={styles.tapHint}>Tap for details</Text>
       </TouchableOpacity>
@@ -145,7 +146,7 @@ const styles = StyleSheet.create({
     opacity: 0.85,
   },
   iconContainer: {
-    height: 30,
+    height: 34,
     marginTop: 4,
     alignItems: 'center',
     justifyContent: 'center',
