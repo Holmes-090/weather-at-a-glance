@@ -10,7 +10,7 @@ export default function TabsLayout() {
     <UnitsProvider>
       <LocationProvider>
         <Tabs
-          initialRouteName="temperature"
+          initialRouteName="summary"
           screenOptions={{
             headerShown: false,
             tabBarStyle: {
@@ -21,6 +21,13 @@ export default function TabsLayout() {
             tabBarInactiveTintColor: 'rgba(227,227,227,0.6)',
           }}
         >
+          <Tabs.Screen
+            name="summary"
+            options={{
+              title: 'Summary',
+              tabBarIcon: ({ color, size }) => <Ionicons name="apps" color={color} size={size} />,
+            }}
+          />
           <Tabs.Screen
             name="temperature"
             options={{

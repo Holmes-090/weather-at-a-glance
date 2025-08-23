@@ -22,12 +22,15 @@ export interface DayForecast {
   windSpeedMax?: number;
   windDirectionDominant?: number;
   humidityMean?: number;
+  sunrise?: string;
+  sunset?: string;
 }
 
 export interface WeatherData {
   timezone: string;
   current: {
     temperature: number;
+    apparentTemperature?: number;
     code: number;
     icon: string;
     description: string;

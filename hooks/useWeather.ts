@@ -19,7 +19,7 @@ export function useWeather(lat: number, lon: number, units: 'metric' | 'imperial
         const tempUnit = units === 'metric' ? 'celsius' : 'fahrenheit';
         const windUnit = units === 'metric' ? 'kmh' : 'mph';
         const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
-          `&hourly=temperature_2m,weather_code,precipitation,precipitation_probability,windspeed_10m,winddirection_10m,relative_humidity_2m` +
+          `&hourly=temperature_2m,apparent_temperature,weather_code,precipitation,precipitation_probability,windspeed_10m,winddirection_10m,relative_humidity_2m` +
           `&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,wind_direction_10m_dominant,relative_humidity_2m_mean` +
           `&current_weather=true&timezone=auto&temperature_unit=${tempUnit}&wind_speed_unit=${windUnit}&forecast_days=7&past_days=0`;
         const res = await fetch(url);
@@ -42,6 +42,7 @@ export function useWeather(lat: number, lon: number, units: 'metric' | 'imperial
         // Hourly mapping
         const hourlyTimes: string[] = json.hourly.time;
         const hourlyTemps: number[] = json.hourly.temperature_2m;
+        const hourlyApparentTemps: number[] = json.hourly.apparent_temperature ?? [];
         const hourlyCodes: number[] = json.hourly.weather_code ?? json.hourly.weathercode ?? [];
         const hourlyPrecip: number[] = json.hourly.precipitation ?? [];
         const hourlyPrecipProb: number[] = json.hourly.precipitation_probability ?? [];
@@ -118,6 +119,8 @@ export function useWeather(lat: number, lon: number, units: 'metric' | 'imperial
         const dailyWindMax: number[] = json.daily.wind_speed_10m_max ?? [];
         const dailyWindDirDominant: number[] = json.daily.wind_direction_10m_dominant ?? [];
         const dailyHumidityMean: number[] = json.daily.relative_humidity_2m_mean ?? [];
+        const dailySunrise: string[] = json.daily.sunrise ?? [];
+        const dailySunset: string[] = json.daily.sunset ?? [];
 
         // Filter daily data to start from today (no past days)
         const todayDate = new Date();
@@ -135,6 +138,8 @@ export function useWeather(lat: number, lon: number, units: 'metric' | 'imperial
             windSpeedMax: dailyWindMax[i],
             windDirectionDominant: dailyWindDirDominant[i],
             humidityMean: dailyHumidityMean[i],
+            sunrise: dailySunrise[i],
+            sunset: dailySunset[i],
             dateObj: new Date(d), // Add for filtering
           }))
           .filter(day => day.dateObj >= todayDate) // Only include today and future days
@@ -156,6 +161,7 @@ export function useWeather(lat: number, lon: number, units: 'metric' | 'imperial
           timezone: tz,
           current: {
             temperature: currentTemp,
+            apparentTemperature: nowIndex >= 0 ? hourlyApparentTemps[nowIndex] : hourlyApparentTemps[0],
             code: currentCode,
             icon: mapWeatherCodeToIcon(currentCode, night),
             description: condition.replace('-', ' '),
