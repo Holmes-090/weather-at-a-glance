@@ -9,4 +9,7 @@ config.cacheStores = [
     new FileStore({ root: path.join(__dirname, 'node_modules', '.cache', 'metro') }),
   ];
 
+// Exclude demo-testing folder from builds
+config.resolver.blacklistRE = /demo-testing\/.*/;
+
 module.exports = config;
