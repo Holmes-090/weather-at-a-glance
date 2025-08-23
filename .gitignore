@@ -44,7 +44,6 @@ netlify.toml
 
 # Package manager files
 pnpm-lock.yaml
-package-lock.json
 
 # Additional security
 *.log
