@@ -23,16 +23,21 @@ export default function HourlyStrip({ hours, unit, mode = 'temperature' }: Props
   const router = useRouter();
 
   const handlePress = () => {
-    console.log(`Navigating to hourly detail with mode: ${mode}, unit: ${unit}`);
+    console.log(`Navigating to hourly detail with mode: ${mode}, unit: ${unit}, hours count: ${hours.length}`);
+    console.log(`First hour data:`, hours[0]);
     // Navigate to hourly detail screen with data
-    router.push({
-      pathname: '/hourly-detail',
-      params: {
-        hourlyData: JSON.stringify(hours),
-        mode: mode,
-        unit: unit,
-      },
-    });
+    try {
+      router.push({
+        pathname: '/hourly-detail',
+        params: {
+          hourlyData: JSON.stringify(hours),
+          mode: mode,
+          unit: unit,
+        },
+      });
+    } catch (error) {
+      console.error('Navigation error:', error);
+    }
   };
 
   return (

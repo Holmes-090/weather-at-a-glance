@@ -1,16 +1,25 @@
 {
+  "cli": {
+    "version": ">= 7.8.6"
+  },
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal",
-      "autoIncrement": true
+      "distribution": "internal"
     },
     "preview": {
       "distribution": "internal",
-      "autoIncrement": true
+      "android": {
+        "buildType": "apk"
+      }
     },
     "production": {
-      "autoIncrement": true
+      "android": {
+        "buildType": "app-bundle"
+      }
     }
+  },
+  "submit": {
+    "production": {}
   }
 }

@@ -152,16 +152,27 @@ async function fetchNWSAlerts(lat: number, lon: number): Promise<WeatherAlertDat
 // Canadian weather alerts from Environment and Climate Change Canada
 async function fetchCanadianAlerts(lat: number, lon: number): Promise<WeatherAlertData[]> {
   try {
-    // Use Environment Canada's GeoMet API for weather alerts
-    const response = await fetch(`https://geo.weather.gc.ca/geomet?SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature&TYPENAME=ALERTS&OUTPUTFORMAT=application/json&BBOX=${lon-0.5},${lat-0.5},${lon+0.5},${lat+0.5}`);
+    // Use a more reliable approach - try the MSC Datamart first
+    const response = await fetch(`https://api.weather.gc.ca/collections/weather-alerts/items?bbox=${lon-1},${lat-1},${lon+1},${lat+1}&f=json`, {
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': 'WeatherApp/1.0'
+      }
+    });
     
     if (!response.ok) {
-      throw new Error('Failed to fetch Canadian weather alerts');
+      throw new Error(`Canadian alerts API returned ${response.status}`);
+    }
+    
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      throw new Error('Canadian alerts API returned non-JSON response');
     }
     
     const data = await response.json();
     
     if (!data.features || !Array.isArray(data.features)) {
+      console.log('No Canadian alerts found for this location');
       return [];
     }
     
@@ -171,7 +182,7 @@ async function fetchCanadianAlerts(lat: number, lon: number): Promise<WeatherAle
       // Map Canadian severity levels to our system
       let severity: WeatherAlertData['severity'] = 'moderate';
       const alertType = props.alert_type?.toLowerCase() || '';
-      const headline = props.headline?.toLowerCase() || '';
+      const headline = (props.headline || props.title || '')?.toLowerCase() || '';
       
       if (headline.includes('warning') || alertType.includes('warning')) {
         severity = 'severe';
@@ -184,18 +195,18 @@ async function fetchCanadianAlerts(lat: number, lon: number): Promise<WeatherAle
       }
       
       return {
-        id: props.identifier || `ca-${Date.now()}-${Math.random()}`,
-        title: props.headline || props.event || 'Weather Alert',
-        description: props.description || props.instruction || 'Check Environment Canada for details.',
+        id: props.identifier || props.id || `ca-${Date.now()}-${Math.random()}`,
+        title: props.headline || props.title || props.event || 'Weather Alert',
+        description: props.description || props.instruction || props.summary || 'Check Environment Canada for details.',
         severity,
-        url: `https://weather.gc.ca/warnings/index_e.html`,
+        url: props.url || `https://weather.gc.ca/warnings/index_e.html`,
         sender: 'Environment and Climate Change Canada',
-        area: props.area_name || props.region_name || 'Local Area',
-        expires: props.expires || undefined,
+        area: props.area_name || props.region_name || props.location || 'Local Area',
+        expires: props.expires || props.expiry_date || undefined,
       };
     });
   } catch (error) {
-    console.log('Canadian alerts not available:', error);
+    console.log('Primary Canadian alerts API failed:', error);
     
     // Fallback: Try a simpler RSS-based approach
     return await fetchCanadianAlertsRSS(lat, lon);
@@ -205,23 +216,18 @@ async function fetchCanadianAlerts(lat: number, lon: number): Promise<WeatherAle
 // Fallback RSS-based Canadian alerts
 async function fetchCanadianAlertsRSS(lat: number, lon: number): Promise<WeatherAlertData[]> {
   try {
-    // For now, return demo data for Canadian locations
-    // In production, you could parse RSS feeds from specific provinces
-    const demoAlerts: WeatherAlertData[] = [];
+    // Log that we're using fallback
+    console.log('Using fallback Canadian alerts method for coordinates:', lat, lon);
     
-    // Add a demo Canadian alert if coordinates are in major Canadian cities
-    const isTorontoArea = lat >= 43.5 && lat <= 44.0 && lon >= -79.8 && lon <= -79.0;
-    const isVancouverArea = lat >= 49.0 && lat <= 49.5 && lon >= -123.5 && lon <= -122.5;
-    const isMontreal = lat >= 45.3 && lat <= 45.7 && lon >= -74.0 && lon <= -73.3;
+    // For now, return empty array - real RSS parsing could be implemented here
+    // You could parse provincial RSS feeds like:
+    // - Ontario: https://weather.gc.ca/rss/warning/on-1_e.xml
+    // - BC: https://weather.gc.ca/rss/warning/bc-1_e.xml
+    // - Quebec: https://weather.gc.ca/rss/warning/qc-1_e.xml
     
-    if (isTorontoArea || isVancouverArea || isMontreal) {
-      // This is just for demo - in production you'd parse actual RSS feeds
-      console.log('Demo: Canadian location detected, showing sample alert');
-    }
-    
-    return demoAlerts;
+    return [];
   } catch (error) {
-    console.log('Canadian RSS alerts not available:', error);
+    console.log('Canadian RSS alerts fallback failed:', error);
     return [];
   }
 }

@@ -23,16 +23,21 @@ export default function DailyStrip({ days, unit, mode = 'temperature' }: Props) 
   const router = useRouter();
 
   const handlePress = () => {
-    console.log(`Navigating to daily detail with mode: ${mode}, unit: ${unit}`);
+    console.log(`Navigating to daily detail with mode: ${mode}, unit: ${unit}, days count: ${days.length}`);
+    console.log(`First day data:`, days[0]);
     // Navigate to daily detail screen with data
-    router.push({
-      pathname: '/daily-detail',
-      params: {
-        dailyData: JSON.stringify(days),
-        mode: mode,
-        unit: unit,
-      },
-    });
+    try {
+      router.push({
+        pathname: '/daily-detail',
+        params: {
+          dailyData: JSON.stringify(days),
+          mode: mode,
+          unit: unit,
+        },
+      });
+    } catch (error) {
+      console.error('Daily navigation error:', error);
+    }
   };
 
   return (
