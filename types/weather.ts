@@ -9,6 +9,7 @@ export interface HourForecast {
   windSpeed?: number; // in chosen unit (km/h or mph)
   windDirection?: number; // degrees
   humidity?: number; // percentage
+  pressure?: number; // hPa (hectopascals)
 }
 
 export interface DayForecast {
@@ -24,6 +25,7 @@ export interface DayForecast {
   humidityMean?: number;
   sunrise?: string;
   sunset?: string;
+  pressureMean?: number;
 }
 
 export interface WeatherData {
@@ -42,9 +44,11 @@ export interface WeatherData {
     windSpeed?: number;
     windDirection?: number;
     humidity?: number;
+    pressure?: number;
     deltaPrecipFromYesterday?: number | null;
     deltaWindFromYesterday?: number | null;
     deltaHumidityFromYesterday?: number | null;
+    deltaPressureFromYesterday?: number | null;
   };
   hourly: HourForecast[];
   daily: DayForecast[];

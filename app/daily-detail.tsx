@@ -8,7 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import CompassRose from '../components/weather/CompassRose';
 import HumidityBar from '../components/weather/HumidityBar';
 
-type Mode = 'temperature' | 'precipitation' | 'wind' | 'humidity';
+type Mode = 'temperature' | 'precipitation' | 'wind' | 'humidity' | 'pressure';
 
 function weatherIcon(codeIcon: string) {
   return codeIcon;
@@ -128,14 +128,16 @@ function DailyLineChart({ data, width, height, mode, unit }: {
     };
   });
 
-  const getYAxisLabel = () => {
-    switch (mode) {
-      case 'temperature': return unit;
-      case 'precipitation': return 'mm';
-      case 'wind': return unit;
-      case 'humidity': return '%';
-    }
-  };
+     const getYAxisLabel = () => {
+     switch (mode) {
+       case 'temperature': return unit;
+       case 'precipitation': return 'mm';
+       case 'wind': return unit;
+       case 'humidity': return '%';
+       case 'pressure': return 'hPa';
+       default: return '';
+     }
+   };
 
   return (
     <Svg width={width} height={height}>
@@ -290,6 +292,9 @@ export default function DailyDetailScreen() {
         case 'humidity':
           yValue = day.humidityMean || 0;
           break;
+        case 'pressure':
+          yValue = day.pressureMean || 1013; // Use calculated daily average or fallback
+          break;
       }
       return {
         x: index,
@@ -311,6 +316,7 @@ export default function DailyDetailScreen() {
       case 'precipitation': return 'Precipitation';
       case 'wind': return 'Wind Speed';
       case 'humidity': return 'Humidity';
+      case 'pressure': return 'Barometric Pressure';
     }
   };
 
@@ -320,6 +326,7 @@ export default function DailyDetailScreen() {
       case 'precipitation': return 'mm';
       case 'wind': return unit;
       case 'humidity': return '%';
+      case 'pressure': return 'hPa';
     }
   };
 

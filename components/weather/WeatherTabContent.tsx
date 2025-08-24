@@ -11,8 +11,9 @@ import { useUnits } from '../..//components/UnitsContext';
 import { useLocation } from '../..//components/LocationContext';
 import { useWeather } from '../../hooks/useWeather';
 import { useWeatherAlerts } from '../../hooks/useWeatherAlerts';
+import { analyzePressure, getPressureTrendArrow } from '../../utils/weatherUtils';
 
-type Mode = 'temperature' | 'precipitation' | 'wind' | 'humidity';
+type Mode = 'temperature' | 'precipitation' | 'wind' | 'humidity' | 'pressure';
 
 interface Props {
   mode: Mode;
@@ -54,6 +55,7 @@ export default function WeatherTabContent({ mode }: Props) {
     switch (mode) {
       case 'temperature': return tempUnit;
       case 'wind': return windUnit;
+      case 'pressure': return 'hPa';
       default: return '';
     }
   }, [mode, tempUnit, windUnit]);
@@ -73,6 +75,8 @@ export default function WeatherTabContent({ mode }: Props) {
       }
       case 'humidity':
         return `${Math.round(data.current.humidity ?? 0)}%`;
+      case 'pressure':
+        return `${Math.round(data.current.pressure ?? 0)} hPa`;
     }
   }, [data, mode, tempUnit, windUnit]);
 
@@ -91,6 +95,11 @@ export default function WeatherTabContent({ mode }: Props) {
       }
       case 'humidity':
         return '';
+      case 'pressure': {
+        const analysis = analyzePressure(data.current.pressure, data.current.deltaPressureFromYesterday);
+        const arrow = getPressureTrendArrow(data.current.deltaPressureFromYesterday);
+        return `${arrow} ${analysis.trend}`;
+      }
     }
   }, [data, mode, compareToYesterdayText]);
 
@@ -105,6 +114,10 @@ export default function WeatherTabContent({ mode }: Props) {
         return `Max ${Math.round(data.daily[0]?.windSpeedMax ?? 0)}${windUnit}`;
       case 'humidity':
         return `Avg ${Math.round(data.daily[0]?.humidityMean ?? 0)}%`;
+      case 'pressure': {
+        const analysis = analyzePressure(data.current.pressure, data.current.deltaPressureFromYesterday);
+        return analysis.prediction;
+      }
     }
   }, [data, mode, tempUnit, windUnit]);
 
@@ -164,12 +177,12 @@ export default function WeatherTabContent({ mode }: Props) {
           <>
             <HourlyStrip
               hours={data.hourly}
-              unit={mode === 'temperature' ? tempUnit : mode === 'wind' ? windUnit : mode === 'precipitation' ? 'mm' : '%'}
+              unit={mode === 'temperature' ? tempUnit : mode === 'wind' ? windUnit : mode === 'precipitation' ? 'mm' : mode === 'pressure' ? 'hPa' : '%'}
               mode={mode}
             />
             <DailyStrip
               days={data.daily}
-              unit={mode === 'temperature' ? tempUnit : mode === 'wind' ? windUnit : mode === 'precipitation' ? 'mm' : '%'}
+              unit={mode === 'temperature' ? tempUnit : mode === 'wind' ? windUnit : mode === 'precipitation' ? 'mm' : mode === 'pressure' ? 'hPa' : '%'}
               mode={mode}
             />
           </>

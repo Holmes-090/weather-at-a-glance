@@ -6,12 +6,13 @@ import { colors } from '../../styles/commonStyles';
 import { HourForecast } from '../../types/weather';
 import CompassRose from './CompassRose';
 import HumidityBar from './HumidityBar';
+import { getPressureTrendArrow } from '../../utils/weatherUtils';
 
 function weatherIcon(codeIcon: string) {
   return codeIcon;
 }
 
-type Mode = 'temperature' | 'precipitation' | 'wind' | 'humidity';
+type Mode = 'temperature' | 'precipitation' | 'wind' | 'humidity' | 'pressure';
 
 interface Props {
   hours: HourForecast[];
@@ -25,8 +26,10 @@ export default function HourlyStrip({ hours, unit, mode = 'temperature' }: Props
   const handlePress = () => {
     console.log(`Navigating to hourly detail with mode: ${mode}, unit: ${unit}, hours count: ${hours.length}`);
     console.log(`First hour data:`, hours[0]);
+    
     // Navigate to hourly detail screen with data
     try {
+      console.log('Attempting navigation to hourly-detail...');
       router.push({
         pathname: '/hourly-detail',
         params: {
@@ -35,8 +38,15 @@ export default function HourlyStrip({ hours, unit, mode = 'temperature' }: Props
           unit: unit,
         },
       });
+      console.log('Hourly navigation push completed');
     } catch (error) {
-      console.error('Navigation error:', error);
+      console.error('Hourly navigation error:', error);
+      // Fallback - try without the data
+      try {
+        router.push('/hourly-detail');
+      } catch (fallbackError) {
+        console.error('Hourly fallback navigation also failed:', fallbackError);
+      }
     }
   };
 
@@ -90,6 +100,12 @@ export default function HourlyStrip({ hours, unit, mode = 'temperature' }: Props
               )}
               {mode === 'humidity' && (
                 <Text style={styles.valueText}>{Math.round(h.humidity ?? 0)}%</Text>
+              )}
+              {mode === 'pressure' && (
+                <View style={{ alignItems: 'center' }}>
+                  <Text style={styles.valueText}>{Math.round(h.pressure ?? 1013)} hPa</Text>
+                  <Text style={styles.subText}>{getPressureTrendArrow()}</Text>
+                </View>
               )}
             </View>
           ))}

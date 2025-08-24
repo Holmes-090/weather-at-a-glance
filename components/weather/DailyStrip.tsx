@@ -11,7 +11,7 @@ function weatherIcon(icon: string) {
   return icon;
 }
 
-type Mode = 'temperature' | 'precipitation' | 'wind' | 'humidity';
+type Mode = 'temperature' | 'precipitation' | 'wind' | 'humidity' | 'pressure';
 
 interface Props {
   days: DayForecast[];
@@ -25,18 +25,33 @@ export default function DailyStrip({ days, unit, mode = 'temperature' }: Props) 
   const handlePress = () => {
     console.log(`Navigating to daily detail with mode: ${mode}, unit: ${unit}, days count: ${days.length}`);
     console.log(`First day data:`, days[0]);
+    
+    // Clean the data to ensure it can be serialized
+    const cleanDays = days.map(day => ({
+      ...day,
+      pressureMean: day.pressureMean || undefined // Ensure undefined instead of null
+    }));
+    
     // Navigate to daily detail screen with data
     try {
+      console.log('Attempting navigation to daily-detail...');
       router.push({
         pathname: '/daily-detail',
         params: {
-          dailyData: JSON.stringify(days),
+          dailyData: JSON.stringify(cleanDays),
           mode: mode,
           unit: unit,
         },
       });
+      console.log('Navigation push completed');
     } catch (error) {
       console.error('Daily navigation error:', error);
+      // Fallback - try without the data
+      try {
+        router.push('/daily-detail');
+      } catch (fallbackError) {
+        console.error('Fallback navigation also failed:', fallbackError);
+      }
     }
   };
 
@@ -91,6 +106,11 @@ export default function DailyStrip({ days, unit, mode = 'temperature' }: Props) 
               {mode === 'humidity' && (
                 <Text style={styles.value}>
                   {Math.round(d.humidityMean ?? 0)}%
+                </Text>
+              )}
+              {mode === 'pressure' && (
+                <Text style={styles.value}>
+                  {d.pressureMean ? `${Math.round(d.pressureMean)} hPa` : 'N/A'}
                 </Text>
               )}
             </View>

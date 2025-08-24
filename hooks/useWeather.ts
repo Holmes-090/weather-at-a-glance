@@ -19,7 +19,7 @@ export function useWeather(lat: number, lon: number, units: 'metric' | 'imperial
         const tempUnit = units === 'metric' ? 'celsius' : 'fahrenheit';
         const windUnit = units === 'metric' ? 'kmh' : 'mph';
         const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
-          `&hourly=temperature_2m,apparent_temperature,weather_code,precipitation,precipitation_probability,windspeed_10m,winddirection_10m,relative_humidity_2m` +
+          `&hourly=temperature_2m,apparent_temperature,weather_code,precipitation,precipitation_probability,windspeed_10m,winddirection_10m,relative_humidity_2m,surface_pressure` +
           `&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,wind_direction_10m_dominant,relative_humidity_2m_mean` +
           `&current_weather=true&timezone=auto&temperature_unit=${tempUnit}&wind_speed_unit=${windUnit}&forecast_days=7&past_days=0`;
         const res = await fetch(url);
@@ -49,6 +49,7 @@ export function useWeather(lat: number, lon: number, units: 'metric' | 'imperial
         const hourlyWind: number[] = json.hourly.windspeed_10m ?? [];
         const hourlyWindDir: number[] = json.hourly.winddirection_10m ?? [];
         const hourlyHumidity: number[] = json.hourly.relative_humidity_2m ?? [];
+        const hourlyPressure: number[] = json.hourly.surface_pressure ?? [];
 
         const hours = hourlyTimes.map((t, i) => ({
           time: t,
@@ -60,6 +61,7 @@ export function useWeather(lat: number, lon: number, units: 'metric' | 'imperial
           windSpeed: hourlyWind[i],
           windDirection: hourlyWindDir[i],
           humidity: hourlyHumidity[i],
+          pressure: hourlyPressure[i],
         }));
 
         // Index for now - need to find the current or next hour
@@ -108,6 +110,7 @@ export function useWeather(lat: number, lon: number, units: 'metric' | 'imperial
         const deltaPrecipFromYesterday = deltaFor(hourlyPrecip);
         const deltaWindFromYesterday = deltaFor(hourlyWind);
         const deltaHumidityFromYesterday = deltaFor(hourlyHumidity);
+        const deltaPressureFromYesterday = deltaFor(hourlyPressure);
 
         // Daily mapping
         const dailyDates: string[] = json.daily.time;
@@ -121,6 +124,24 @@ export function useWeather(lat: number, lon: number, units: 'metric' | 'imperial
         const dailyHumidityMean: number[] = json.daily.relative_humidity_2m_mean ?? [];
         const dailySunrise: string[] = json.daily.sunrise ?? [];
         const dailySunset: string[] = json.daily.sunset ?? [];
+
+        // Calculate daily pressure averages from hourly data
+        const calculateDailyPressureAverage = (dayDate: string): number | undefined => {
+          const dayStart = new Date(dayDate);
+          const dayEnd = new Date(dayDate);
+          dayEnd.setHours(23, 59, 59, 999);
+          
+          const dayHourlyPressures = hourlyTimes
+            .map((time, index) => ({ time: new Date(time), pressure: hourlyPressure[index] }))
+            .filter(({ time }) => time >= dayStart && time <= dayEnd)
+            .map(({ pressure }) => pressure)
+            .filter(p => p && p > 0); // Filter out invalid values
+          
+          if (dayHourlyPressures.length === 0) return undefined;
+          
+          const avgPressure = dayHourlyPressures.reduce((sum, p) => sum + p, 0) / dayHourlyPressures.length;
+          return avgPressure; // Already in hPa from API
+        };
 
         // Filter daily data to start from today (no past days)
         const todayDate = new Date();
@@ -140,6 +161,7 @@ export function useWeather(lat: number, lon: number, units: 'metric' | 'imperial
             humidityMean: dailyHumidityMean[i],
             sunrise: dailySunrise[i],
             sunset: dailySunset[i],
+            pressureMean: calculateDailyPressureAverage(d),
             dateObj: new Date(d), // Add for filtering
           }))
           .filter(day => day.dateObj >= todayDate) // Only include today and future days
@@ -173,9 +195,11 @@ export function useWeather(lat: number, lon: number, units: 'metric' | 'imperial
             windSpeed: nowIndex >= 0 ? hourlyWind[nowIndex] : hourlyWind[0],
             windDirection: nowIndex >= 0 ? hourlyWindDir[nowIndex] : hourlyWindDir[0],
             humidity: nowIndex >= 0 ? hourlyHumidity[nowIndex] : hourlyHumidity[0],
+            pressure: nowIndex >= 0 ? hourlyPressure[nowIndex] : hourlyPressure[0],
             deltaPrecipFromYesterday,
             deltaWindFromYesterday,
             deltaHumidityFromYesterday,
+            deltaPressureFromYesterday,
           },
           hourly: futureHours,
           daily,

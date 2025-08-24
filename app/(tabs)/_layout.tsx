@@ -56,6 +56,13 @@ export default function TabsLayout() {
               tabBarIcon: ({ color, size }) => <Ionicons name="water" color={color} size={size} />,
             }}
           />
+          <Tabs.Screen
+            name="pressure"
+            options={{
+              title: 'Pressure',
+              tabBarIcon: ({ color, size }) => <Ionicons name="speedometer" color={color} size={size} />,
+            }}
+          />
         </Tabs>
       </LocationProvider>
     </UnitsProvider>

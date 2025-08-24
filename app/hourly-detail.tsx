@@ -8,7 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import CompassRose from '../components/weather/CompassRose';
 import HumidityBar from '../components/weather/HumidityBar';
 
-type Mode = 'temperature' | 'precipitation' | 'wind' | 'humidity';
+type Mode = 'temperature' | 'precipitation' | 'wind' | 'humidity' | 'pressure';
 
 function weatherIcon(codeIcon: string) {
   return codeIcon;
@@ -81,6 +81,8 @@ function SimpleLineChart({ data, width, height, mode, unit }: {
       case 'precipitation': return 'mm';
       case 'wind': return unit;
       case 'humidity': return '%';
+      case 'pressure': return 'hPa';
+      default: return '';
     }
   };
 
@@ -202,6 +204,9 @@ export default function HourlyDetailScreen() {
         case 'humidity':
           yValue = hour.humidity || 0;
           break;
+        case 'pressure':
+          yValue = hour.pressure || 1013;
+          break;
       }
       return {
         x: index,
@@ -223,6 +228,7 @@ export default function HourlyDetailScreen() {
       case 'precipitation': return 'Precipitation';
       case 'wind': return 'Wind Speed';
       case 'humidity': return 'Humidity';
+      case 'pressure': return 'Barometric Pressure';
     }
   };
 
@@ -232,6 +238,8 @@ export default function HourlyDetailScreen() {
       case 'precipitation': return 'mm';
       case 'wind': return unit;
       case 'humidity': return '%';
+      case 'pressure': return 'hPa';
+      default: return '';
     }
   };
 
@@ -314,6 +322,10 @@ export default function HourlyDetailScreen() {
                   
                   {mode === 'humidity' && (
                     <Text style={styles.hourlyValue}>{Math.round(hour.humidity ?? 0)}%</Text>
+                  )}
+                  
+                  {mode === 'pressure' && (
+                    <Text style={styles.hourlyValue}>{Math.round(hour.pressure ?? 1013)} hPa</Text>
                   )}
                 </View>
               ))}

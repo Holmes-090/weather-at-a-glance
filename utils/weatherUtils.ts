@@ -45,3 +45,63 @@ export function formatDayLabel(iso: string) {
 export function isNightLocal(now: Date, sunrise: Date, sunset: Date) {
   return now < sunrise || now > sunset;
 }
+
+export function analyzePressure(currentPressure?: number, pressureDelta?: number | null) {
+  if (!currentPressure) return { trend: 'Unknown', prediction: 'No data available' };
+
+  // Pressure categories (hPa)
+  const isLowPressure = currentPressure < 1013;
+  const isHighPressure = currentPressure > 1020;
+  
+  let trend = 'Steady';
+  let prediction = 'Stable conditions';
+  
+  if (pressureDelta !== null && typeof pressureDelta === 'number') {
+    const deltaAbs = Math.abs(pressureDelta);
+    
+    if (deltaAbs >= 3) {
+      // Significant pressure change
+      if (pressureDelta > 0) {
+        trend = 'Rising rapidly';
+        prediction = 'Clearing skies, improving weather';
+      } else {
+        trend = 'Falling rapidly';
+        prediction = 'Storm approaching, unsettled weather';
+      }
+    } else if (deltaAbs >= 1) {
+      // Moderate pressure change
+      if (pressureDelta > 0) {
+        trend = 'Rising';
+        prediction = 'Fair weather likely';
+      } else {
+        trend = 'Falling';
+        prediction = 'Clouds and rain possible';
+      }
+    } else if (deltaAbs >= 0.5) {
+      // Slight pressure change
+      if (pressureDelta > 0) {
+        trend = 'Rising slowly';
+        prediction = 'Generally fair conditions';
+      } else {
+        trend = 'Falling slowly';
+        prediction = 'Partly cloudy conditions';
+      }
+    }
+  }
+  
+  // Override prediction based on current pressure level
+  if (isLowPressure && trend.includes('Falling')) {
+    prediction = 'Rain likely, stormy conditions';
+  } else if (isHighPressure && trend.includes('Rising')) {
+    prediction = 'Clear skies, dry conditions';
+  }
+  
+  return { trend, prediction };
+}
+
+export function getPressureTrendArrow(pressureDelta?: number | null): string {
+  if (!pressureDelta || typeof pressureDelta !== 'number') return '→';
+  
+  if (Math.abs(pressureDelta) < 0.5) return '→'; // Steady
+  return pressureDelta > 0 ? '↗' : '↘'; // Rising or Falling
+}

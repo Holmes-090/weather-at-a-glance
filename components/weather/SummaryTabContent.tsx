@@ -9,6 +9,7 @@ import { useUnits } from '../UnitsContext';
 import { useLocation } from '../LocationContext';
 import { useWeather } from '../../hooks/useWeather';
 import { useWeatherAlerts } from '../../hooks/useWeatherAlerts';
+import { analyzePressure } from '../../utils/weatherUtils';
 
 export default function SummaryTabContent() {
   const { units, setUnits } = useUnits();
@@ -30,6 +31,12 @@ export default function SummaryTabContent() {
 
   const tempUnit = units === 'metric' ? '°C' : '°F';
   const windUnit = units === 'metric' ? 'km/h' : 'mph';
+
+  // Pressure analysis
+  const pressureAnalysis = useMemo(() => {
+    if (!data?.current.pressure) return null;
+    return analyzePressure(data.current.pressure, data.current.deltaPressureFromYesterday);
+  }, [data]);
 
   // Weather comparisons to yesterday
   const weatherComparisons = useMemo(() => {
@@ -93,6 +100,21 @@ export default function SummaryTabContent() {
           type: 'Humidity',
           text: `${abs}% ${diff > 0 ? 'more humid' : 'drier'} than yesterday`,
           icon: diff > 0 ? '💧' : '🏜️'
+        });
+      }
+    }
+
+    // Pressure comparison
+    if (data.current.deltaPressureFromYesterday !== null && typeof data.current.deltaPressureFromYesterday === 'number') {
+      const diff = data.current.deltaPressureFromYesterday;
+      const abs = Math.abs(diff);
+      if (abs < 1) {
+        comparisons.push({ type: 'Pressure', text: 'Similar to yesterday', icon: '🌡️' });
+      } else {
+        comparisons.push({
+          type: 'Pressure',
+          text: `${abs.toFixed(1)} hPa ${diff > 0 ? 'higher' : 'lower'} than yesterday`,
+          icon: diff > 0 ? '📈' : '📉'
         });
       }
     }
@@ -197,6 +219,19 @@ export default function SummaryTabContent() {
                     {Math.round(data.current.humidity ?? 0)}%
                   </Text>
                   <Text style={styles.quickStatLabel}>Humidity</Text>
+                </View>
+
+                <View style={styles.quickStatCard}>
+                  <Text style={styles.quickStatIcon}>🌡️</Text>
+                  <Text style={styles.quickStatValue}>
+                    {Math.round(data.current.pressure ?? 0)} hPa
+                  </Text>
+                  <Text style={styles.quickStatLabel}>Pressure</Text>
+                  {pressureAnalysis && (
+                    <Text style={styles.quickStatFeelsLike}>
+                      {pressureAnalysis.prediction}
+                    </Text>
+                  )}
                 </View>
               </View>
             </View>
