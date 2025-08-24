@@ -24,39 +24,73 @@ export default function HourlyStrip({ hours, unit, mode = 'temperature' }: Props
   const router = useRouter();
 
   const handlePress = () => {
-    console.log(`Navigating to hourly detail with mode: ${mode}, unit: ${unit}, hours count: ${hours.length}`);
-    console.log(`First hour data:`, hours[0]);
+    console.log(`[HOURLY NAV] Starting navigation with mode: ${mode}, unit: ${unit}, hours count: ${hours.length}`);
+    console.log(`[HOURLY NAV] First hour data:`, hours[0]);
     
-    // Navigate to hourly detail screen with data
-    try {
-      console.log('Attempting navigation to hourly-detail...');
-      router.push({
-        pathname: '/hourly-detail',
-        params: {
-          hourlyData: JSON.stringify(hours),
-          mode: mode,
-          unit: unit,
-        },
-      });
-      console.log('Hourly navigation push completed');
-    } catch (error) {
-      console.error('Hourly navigation error:', error);
-      // Fallback - try without the data
+    // Add a small delay to ensure touch event is fully processed
+    setTimeout(() => {
       try {
-        router.push('/hourly-detail');
-      } catch (fallbackError) {
-        console.error('Hourly fallback navigation also failed:', fallbackError);
+        // Clean the data to ensure it can be serialized properly
+        const cleanHours = hours.map(hour => ({
+          time: hour.time,
+          label: hour.label,
+          temperature: hour.temperature || 0,
+          icon: hour.icon || '🌡️',
+          precipitationMm: hour.precipitationMm || 0,
+          precipitationProb: hour.precipitationProb || 0,
+          windSpeed: hour.windSpeed || 0,
+          windDirection: hour.windDirection || 0,
+          humidity: hour.humidity || 0,
+          pressure: hour.pressure || 1013
+        }));
+        
+        console.log(`[HOURLY NAV] Cleaned data, attempting navigation...`);
+        
+        // Navigate to hourly detail screen with data
+        router.push({
+          pathname: '/hourly-detail',
+          params: {
+            hourlyData: JSON.stringify(cleanHours),
+            mode: mode,
+            unit: unit,
+          },
+        });
+        
+        console.log(`[HOURLY NAV] Navigation push completed successfully`);
+      } catch (error) {
+        console.error('[HOURLY NAV] Navigation error:', error);
+        console.error('[HOURLY NAV] Error stack:', error.stack);
+        
+        // Fallback - try simplified navigation
+        try {
+          console.log('[HOURLY NAV] Attempting fallback navigation...');
+          router.push('/hourly-detail');
+        } catch (fallbackError) {
+          console.error('[HOURLY NAV] Fallback navigation failed:', fallbackError);
+        }
       }
-    }
+    }, 10); // Small delay to ensure touch processing is complete
   };
 
   return (
     <View style={styles.card}>
-      <TouchableOpacity style={styles.titleRow} onPress={handlePress} activeOpacity={0.7} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+      <TouchableOpacity 
+        style={styles.titleRow} 
+        onPress={handlePress} 
+        activeOpacity={0.7} 
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        delayPressIn={0}
+        delayPressOut={0}
+      >
         <Text style={styles.title}>Hourly</Text>
         <Text style={styles.tapHint}>Tap for details</Text>
       </TouchableOpacity>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false}
+        scrollEventThrottle={16}
+        keyboardShouldPersistTaps="handled"
+      >
         <View style={styles.row}>
           {hours.map((h) => (
             <View key={h.time} style={styles.item}>

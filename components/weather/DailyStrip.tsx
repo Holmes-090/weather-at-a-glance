@@ -23,45 +23,76 @@ export default function DailyStrip({ days, unit, mode = 'temperature' }: Props) 
   const router = useRouter();
 
   const handlePress = () => {
-    console.log(`Navigating to daily detail with mode: ${mode}, unit: ${unit}, days count: ${days.length}`);
-    console.log(`First day data:`, days[0]);
+    console.log(`[DAILY NAV] Starting navigation with mode: ${mode}, unit: ${unit}, days count: ${days.length}`);
+    console.log(`[DAILY NAV] First day data:`, days[0]);
     
-    // Clean the data to ensure it can be serialized
-    const cleanDays = days.map(day => ({
-      ...day,
-      pressureMean: day.pressureMean || undefined // Ensure undefined instead of null
-    }));
-    
-    // Navigate to daily detail screen with data
-    try {
-      console.log('Attempting navigation to daily-detail...');
-      router.push({
-        pathname: '/daily-detail',
-        params: {
-          dailyData: JSON.stringify(cleanDays),
-          mode: mode,
-          unit: unit,
-        },
-      });
-      console.log('Navigation push completed');
-    } catch (error) {
-      console.error('Daily navigation error:', error);
-      // Fallback - try without the data
+    // Add a small delay to ensure touch event is fully processed
+    setTimeout(() => {
       try {
-        router.push('/daily-detail');
-      } catch (fallbackError) {
-        console.error('Fallback navigation also failed:', fallbackError);
+        // Clean the data to ensure it can be serialized properly
+        const cleanDays = days.map(day => ({
+          date: day.date,
+          label: day.label,
+          max: day.max || 0,
+          min: day.min || 0,
+          icon: day.icon || '🌡️',
+          precipSumMm: day.precipSumMm || 0,
+          precipProbMax: day.precipProbMax || 0,
+          windSpeedMax: day.windSpeedMax || 0,
+          windDirectionDominant: day.windDirectionDominant || 0,
+          humidityMean: day.humidityMean || 0,
+          sunrise: day.sunrise || '',
+          sunset: day.sunset || '',
+          pressureMean: day.pressureMean || 1013
+        }));
+        
+        console.log(`[DAILY NAV] Cleaned data, attempting navigation...`);
+        
+        // Navigate to daily detail screen with data
+        router.push({
+          pathname: '/daily-detail',
+          params: {
+            dailyData: JSON.stringify(cleanDays),
+            mode: mode,
+            unit: unit,
+          },
+        });
+        
+        console.log(`[DAILY NAV] Navigation push completed successfully`);
+      } catch (error) {
+        console.error('[DAILY NAV] Navigation error:', error);
+        console.error('[DAILY NAV] Error stack:', error.stack);
+        
+        // Fallback - try simplified navigation
+        try {
+          console.log('[DAILY NAV] Attempting fallback navigation...');
+          router.push('/daily-detail');
+        } catch (fallbackError) {
+          console.error('[DAILY NAV] Fallback navigation failed:', fallbackError);
+        }
       }
-    }
+    }, 10); // Small delay to ensure touch processing is complete
   };
 
   return (
     <View style={styles.card}>
-      <TouchableOpacity style={styles.titleRow} onPress={handlePress} activeOpacity={0.7} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+      <TouchableOpacity 
+        style={styles.titleRow} 
+        onPress={handlePress} 
+        activeOpacity={0.7} 
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        delayPressIn={0}
+        delayPressOut={0}
+      >
         <Text style={styles.title}>7-Day Forecast</Text>
         <Text style={styles.tapHint}>Tap for details</Text>
       </TouchableOpacity>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false}
+        scrollEventThrottle={16}
+        keyboardShouldPersistTaps="handled"
+      >
         <View style={styles.row}>
           {days.map((d) => (
             <View key={d.date} style={styles.item}>
