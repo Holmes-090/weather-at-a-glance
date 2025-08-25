@@ -9,7 +9,7 @@ import { useUnits } from '../UnitsContext';
 import { useLocation } from '../LocationContext';
 import { useWeather } from '../../hooks/useWeather';
 import { useWeatherAlerts } from '../../hooks/useWeatherAlerts';
-import { analyzePressure } from '../../utils/weatherUtils';
+import { analyzePressure, formatUVIndex, convertVisibility, formatDewPoint } from '../../utils/weatherUtils';
 import { formatPressure } from '../../types/units';
 
 export default function SummaryTabContent() {
@@ -244,6 +244,38 @@ export default function SummaryTabContent() {
                       {pressureAnalysis.prediction}
                     </Text>
                   )}
+                </View>
+
+                <View style={styles.quickStatCard}>
+                  <Text style={styles.quickStatIcon}>☀️</Text>
+                  <Text style={styles.quickStatValue}>
+                    {formatUVIndex(data.current.uvIndex)}
+                  </Text>
+                  <Text style={styles.quickStatLabel}>UV Index</Text>
+                </View>
+
+                <View style={styles.quickStatCard}>
+                  <Text style={styles.quickStatIcon}>💧</Text>
+                  <Text style={styles.quickStatValue}>
+                    {formatDewPoint(data.current.dewPoint, tempUnit)}
+                  </Text>
+                  <Text style={styles.quickStatLabel}>Dew Point</Text>
+                </View>
+
+                <View style={styles.quickStatCard}>
+                  <Text style={styles.quickStatIcon}>👁️</Text>
+                  <Text style={styles.quickStatValue}>
+                    {data.current.visibility ? convertVisibility(data.current.visibility / 1000, temperatureUnit === 'metric') : 'N/A'}
+                  </Text>
+                  <Text style={styles.quickStatLabel}>Visibility</Text>
+                </View>
+
+                <View style={styles.quickStatCard}>
+                  <Text style={styles.quickStatIcon}>☁️</Text>
+                  <Text style={styles.quickStatValue}>
+                    {Math.round(data.current.cloudCover ?? 0)}%
+                  </Text>
+                  <Text style={styles.quickStatLabel}>Cloud Cover</Text>
                 </View>
               </View>
             </View>

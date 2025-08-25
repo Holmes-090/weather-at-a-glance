@@ -105,3 +105,42 @@ export function getPressureTrendArrow(pressureDelta?: number | null): string {
   if (Math.abs(pressureDelta) < 0.5) return '→'; // Steady
   return pressureDelta > 0 ? '↗' : '↘'; // Rising or Falling
 }
+
+// UV Index utility functions
+export function getUVIndexDescription(uvIndex?: number): string {
+  if (!uvIndex || uvIndex < 0) return 'Unknown';
+  if (uvIndex <= 2) return 'Low';
+  if (uvIndex <= 5) return 'Moderate';
+  if (uvIndex <= 7) return 'High';
+  if (uvIndex <= 10) return 'Very High';
+  return 'Extreme';
+}
+
+export function formatUVIndex(uvIndex?: number): string {
+  if (!uvIndex || uvIndex < 0) return '0 "Unknown"';
+  return `${Math.round(uvIndex)} "${getUVIndexDescription(uvIndex)}"`;
+}
+
+// Visibility/distance conversion utilities
+export function convertVisibility(kmValue: number, isMetric: boolean): string {
+  if (isMetric) {
+    if (kmValue >= 10) {
+      return `${Math.round(kmValue)} km`;
+    } else {
+      return `${kmValue.toFixed(1)} km`;
+    }
+  } else {
+    const miles = kmValue * 0.621371;
+    if (miles >= 10) {
+      return `${Math.round(miles)} mi`;
+    } else {
+      return `${miles.toFixed(1)} mi`;
+    }
+  }
+}
+
+// Dew point utility
+export function formatDewPoint(dewPoint?: number, tempUnit?: string): string {
+  if (!dewPoint && dewPoint !== 0) return 'N/A';
+  return `${Math.round(dewPoint)}${tempUnit || '°C'}`;
+}

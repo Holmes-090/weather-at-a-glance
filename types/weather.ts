@@ -45,6 +45,10 @@ export interface WeatherData {
     windDirection?: number;
     humidity?: number;
     pressure?: number;
+    uvIndex?: number;
+    dewPoint?: number;
+    visibility?: number; // in km
+    cloudCover?: number; // percentage 0-100
     deltaPrecipFromYesterday?: number | null;
     deltaWindFromYesterday?: number | null;
     deltaHumidityFromYesterday?: number | null;

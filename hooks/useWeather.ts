@@ -19,8 +19,8 @@ export function useWeather(lat: number, lon: number, units: 'metric' | 'imperial
         const tempUnit = units === 'metric' ? 'celsius' : 'fahrenheit';
         const windUnit = units === 'metric' ? 'kmh' : 'mph';
         const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
-          `&hourly=temperature_2m,apparent_temperature,weather_code,precipitation,precipitation_probability,windspeed_10m,winddirection_10m,relative_humidity_2m,surface_pressure` +
-          `&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,wind_direction_10m_dominant,relative_humidity_2m_mean` +
+          `&hourly=temperature_2m,apparent_temperature,weather_code,precipitation,precipitation_probability,windspeed_10m,winddirection_10m,relative_humidity_2m,surface_pressure,uv_index,dewpoint_2m,visibility,cloudcover` +
+          `&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,wind_direction_10m_dominant,relative_humidity_2m_mean,uv_index_max` +
           `&current_weather=true&timezone=auto&temperature_unit=${tempUnit}&wind_speed_unit=${windUnit}&forecast_days=7&past_days=0`;
         const res = await fetch(url);
         if (!res.ok) throw new Error('Failed to fetch weather');
@@ -50,6 +50,10 @@ export function useWeather(lat: number, lon: number, units: 'metric' | 'imperial
         const hourlyWindDir: number[] = json.hourly.winddirection_10m ?? [];
         const hourlyHumidity: number[] = json.hourly.relative_humidity_2m ?? [];
         const hourlyPressure: number[] = json.hourly.surface_pressure ?? [];
+        const hourlyUVIndex: number[] = json.hourly.uv_index ?? [];
+        const hourlyDewPoint: number[] = json.hourly.dewpoint_2m ?? [];
+        const hourlyVisibility: number[] = json.hourly.visibility ?? [];
+        const hourlyCloudCover: number[] = json.hourly.cloudcover ?? [];
 
         const hours = hourlyTimes.map((t, i) => ({
           time: t,
@@ -196,6 +200,10 @@ export function useWeather(lat: number, lon: number, units: 'metric' | 'imperial
             windDirection: nowIndex >= 0 ? hourlyWindDir[nowIndex] : hourlyWindDir[0],
             humidity: nowIndex >= 0 ? hourlyHumidity[nowIndex] : hourlyHumidity[0],
             pressure: nowIndex >= 0 ? hourlyPressure[nowIndex] : hourlyPressure[0],
+            uvIndex: nowIndex >= 0 ? hourlyUVIndex[nowIndex] : hourlyUVIndex[0],
+            dewPoint: nowIndex >= 0 ? hourlyDewPoint[nowIndex] : hourlyDewPoint[0],
+            visibility: nowIndex >= 0 ? hourlyVisibility[nowIndex] : hourlyVisibility[0],
+            cloudCover: nowIndex >= 0 ? hourlyCloudCover[nowIndex] : hourlyCloudCover[0],
             deltaPrecipFromYesterday,
             deltaWindFromYesterday,
             deltaHumidityFromYesterday,
