@@ -1,35 +1,67 @@
 
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import type { UnitType } from './UnitToggleSheet';
+import type { TemperatureUnit, PressureUnit, UnitsConfig } from '../types/units';
 import { Platform } from 'react-native';
 
+// Legacy export for backward compatibility
+export type UnitType = TemperatureUnit;
+
 type UnitsContextType = {
-  units: UnitType;
-  setUnits: (u: UnitType) => void;
+  units: UnitsConfig;
+  temperatureUnit: TemperatureUnit;
+  pressureUnit: PressureUnit;
+  setTemperatureUnit: (unit: TemperatureUnit) => void;
+  setPressureUnit: (unit: PressureUnit) => void;
+  // Legacy support
+  setUnits: (u: TemperatureUnit) => void;
 };
 
 const UnitsContext = createContext<UnitsContextType | undefined>(undefined);
 
 export function UnitsProvider({ children }: { children: React.ReactNode }) {
-  const [units, setUnits] = useState<UnitType>(() => {
+  const [temperatureUnit, setTemperatureUnit] = useState<TemperatureUnit>(() => {
     if (Platform.OS === 'web') {
-      const v = localStorage.getItem('units');
+      const v = localStorage.getItem('temperatureUnit');
       if (v === 'metric' || v === 'imperial') return v;
     }
     return 'metric';
   });
 
+  const [pressureUnit, setPressureUnit] = useState<PressureUnit>(() => {
+    if (Platform.OS === 'web') {
+      const v = localStorage.getItem('pressureUnit');
+      if (v === 'hPa' || v === 'inHg' || v === 'kPa') return v;
+    }
+    return 'hPa';
+  });
+
   useEffect(() => {
     if (Platform.OS === 'web') {
       try {
-        localStorage.setItem('units', units);
+        localStorage.setItem('temperatureUnit', temperatureUnit);
+        localStorage.setItem('pressureUnit', pressureUnit);
       } catch (e) {
         console.log('Could not persist units', e);
       }
     }
-  }, [units]);
+  }, [temperatureUnit, pressureUnit]);
 
-  const value = useMemo(() => ({ units, setUnits }), [units]);
+  const units: UnitsConfig = useMemo(() => ({
+    temperature: temperatureUnit,
+    pressure: pressureUnit,
+  }), [temperatureUnit, pressureUnit]);
+
+  // Legacy support for existing components
+  const setUnits = (u: TemperatureUnit) => setTemperatureUnit(u);
+
+  const value = useMemo(() => ({
+    units,
+    temperatureUnit,
+    pressureUnit,
+    setTemperatureUnit,
+    setPressureUnit,
+    setUnits, // Legacy support
+  }), [units, temperatureUnit, pressureUnit]);
 
   return <UnitsContext.Provider value={value}>{children}</UnitsContext.Provider>;
 }

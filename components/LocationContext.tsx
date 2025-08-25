@@ -7,8 +7,9 @@ import { reverseGeocode } from '../hooks/useGeocoding';
 export type LocationType = { name: string; latitude: number; longitude: number; country?: string };
 
 type LocationContextType = {
-  location: LocationType;
+  location: LocationType | null;
   setLocation: (loc: LocationType) => void;
+  isInitializing: boolean;
 };
 
 const DEFAULT_LOCATION: LocationType = {
@@ -21,7 +22,7 @@ const DEFAULT_LOCATION: LocationType = {
 const LocationContext = createContext<LocationContextType | undefined>(undefined);
 
 export function LocationProvider({ children }: { children: React.ReactNode }) {
-  const [location, setLocation] = useState<LocationType>(() => {
+  const [location, setLocation] = useState<LocationType | null>(() => {
     if (Platform.OS === 'web') {
       try {
         const raw = localStorage.getItem('location');
@@ -30,23 +31,21 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
         console.log('Failed to read location from storage');
       }
     }
-    return DEFAULT_LOCATION;
+    return null; // Don't use default location immediately
   });
 
   const [hasAttemptedAutoLocation, setHasAttemptedAutoLocation] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
   const currentLocation = useCurrentLocation();
 
   // Auto-detect location on first load if no saved location exists
   useEffect(() => {
     if (hasAttemptedAutoLocation) return;
 
-    // Only auto-detect if we're still using the default location
-    const isUsingDefaultLocation = 
-      location.latitude === DEFAULT_LOCATION.latitude && 
-      location.longitude === DEFAULT_LOCATION.longitude;
-
-    if (!isUsingDefaultLocation) {
+    // If we have a saved location from storage, use it and skip auto-detection
+    if (location) {
       setHasAttemptedAutoLocation(true);
+      setIsInitializing(false);
       return;
     }
 
@@ -67,21 +66,27 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
             console.log('Auto-detected location:', newLocation.name);
           } else {
             console.log('Failed to reverse geocode coordinates, using default location');
+            setLocation(DEFAULT_LOCATION);
           }
+          setIsInitializing(false);
         })
         .catch((error) => {
           console.log('Error during reverse geocoding:', error);
+          setLocation(DEFAULT_LOCATION);
+          setIsInitializing(false);
         });
     } else if (currentLocation.error && !currentLocation.loading) {
-      // Location detection failed, stick with default
+      // Location detection failed, use default location
       setHasAttemptedAutoLocation(true);
       console.log('Location detection failed:', currentLocation.error);
+      setLocation(DEFAULT_LOCATION);
+      setIsInitializing(false);
     }
   }, [currentLocation, location, hasAttemptedAutoLocation]);
 
   // Save location to storage when it changes
   useEffect(() => {
-    if (Platform.OS === 'web') {
+    if (location && Platform.OS === 'web') {
       try {
         localStorage.setItem('location', JSON.stringify(location));
       } catch (e) {
@@ -90,7 +95,7 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
     }
   }, [location]);
 
-  const value = useMemo(() => ({ location, setLocation }), [location]);
+  const value = useMemo(() => ({ location, setLocation, isInitializing }), [location, isInitializing]);
 
   return <LocationContext.Provider value={value}>{children}</LocationContext.Provider>;
 }

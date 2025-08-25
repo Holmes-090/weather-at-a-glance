@@ -7,6 +7,8 @@ import { HourForecast } from '../../types/weather';
 import CompassRose from './CompassRose';
 import HumidityBar from './HumidityBar';
 import { getPressureTrendArrow } from '../../utils/weatherUtils';
+import { useUnits } from '../UnitsContext';
+import { formatPressure } from '../../types/units';
 
 function weatherIcon(codeIcon: string) {
   return codeIcon;
@@ -22,6 +24,7 @@ interface Props {
 
 export default function HourlyStrip({ hours, unit, mode = 'temperature' }: Props) {
   const router = useRouter();
+  const { pressureUnit } = useUnits();
 
   const handlePress = () => {
     console.log(`[HOURLY NAV] Starting navigation with mode: ${mode}, unit: ${unit}, hours count: ${hours.length}`);
@@ -137,7 +140,7 @@ export default function HourlyStrip({ hours, unit, mode = 'temperature' }: Props
               )}
               {mode === 'pressure' && (
                 <View style={{ alignItems: 'center' }}>
-                  <Text style={styles.valueText}>{Math.round(h.pressure ?? 1013)} hPa</Text>
+                  <Text style={styles.valueText}>{formatPressure(h.pressure ?? 1013, pressureUnit)}</Text>
                   <Text style={styles.subText}>{getPressureTrendArrow()}</Text>
                 </View>
               )}

@@ -12,6 +12,7 @@ import { useLocation } from '../..//components/LocationContext';
 import { useWeather } from '../../hooks/useWeather';
 import { useWeatherAlerts } from '../../hooks/useWeatherAlerts';
 import { analyzePressure, getPressureTrendArrow } from '../../utils/weatherUtils';
+import { formatPressure, getPressureUnitSymbol } from '../../types/units';
 
 type Mode = 'temperature' | 'precipitation' | 'wind' | 'humidity' | 'pressure';
 
@@ -20,12 +21,21 @@ interface Props {
 }
 
 export default function WeatherTabContent({ mode }: Props) {
-  const { units, setUnits } = useUnits();
-  const { location, setLocation } = useLocation();
+  const { temperatureUnit, pressureUnit, setTemperatureUnit, setPressureUnit, setUnits } = useUnits();
+  const { location, setLocation, isInitializing } = useLocation();
   const sheetRef = useRef<any>(null);
 
-  const { data, loading, error } = useWeather(location.latitude, location.longitude, units);
-  const { alerts, dismissAlert } = useWeatherAlerts(location.latitude, location.longitude);
+  // Don't fetch weather data if location is not yet determined
+  const shouldFetchWeather = location && !isInitializing;
+  const { data, loading, error } = useWeather(
+    shouldFetchWeather ? location.latitude : 0,
+    shouldFetchWeather ? location.longitude : 0,
+    temperatureUnit
+  );
+  const { alerts, dismissAlert } = useWeatherAlerts(
+    shouldFetchWeather ? location.latitude : 0,
+    shouldFetchWeather ? location.longitude : 0
+  );
 
   if (error) {
     console.log('Weather error', error);
@@ -48,14 +58,15 @@ export default function WeatherTabContent({ mode }: Props) {
     return `${abs}° ${diff > 0 ? 'warmer' : 'colder'} than yesterday`;
   }, [data, mode]);
 
-  const tempUnit = units === 'metric' ? '°C' : '°F';
-  const windUnit = units === 'metric' ? 'km/h' : 'mph';
+  const tempUnit = temperatureUnit === 'metric' ? '°C' : '°F';
+  const windUnit = temperatureUnit === 'metric' ? 'km/h' : 'mph';
 
   const titleUnit = useMemo(() => {
     switch (mode) {
       case 'temperature': return tempUnit;
       case 'wind': return windUnit;
-      case 'pressure': return 'hPa';
+      case 'pressure': return getPressureUnitSymbol(pressureUnit);
+      case 'humidity': return '%';
       default: return '';
     }
   }, [mode, tempUnit, windUnit]);
@@ -76,9 +87,9 @@ export default function WeatherTabContent({ mode }: Props) {
       case 'humidity':
         return `${Math.round(data.current.humidity ?? 0)}%`;
       case 'pressure':
-        return `${Math.round(data.current.pressure ?? 0)} hPa`;
+        return formatPressure(data.current.pressure ?? 1013, pressureUnit);
     }
-  }, [data, mode, tempUnit, windUnit]);
+  }, [data, mode, tempUnit, windUnit, pressureUnit]);
 
   const subValue = useMemo(() => {
     if (!data) return '';
@@ -154,10 +165,12 @@ export default function WeatherTabContent({ mode }: Props) {
         )}
 
         <View style={styles.currentCard}>
-          <Text style={styles.cityName}>
-            {location.name}{location.country ? `, ${location.country}` : ''}
-          </Text>
-          {loading ? (
+          {location && (
+            <Text style={styles.cityName}>
+              {location.name}{location.country ? `, ${location.country}` : ''}
+            </Text>
+          )}
+          {(loading || isInitializing || !location) ? (
             <ActivityIndicator color="#fff" size="large" />
           ) : data ? (
             <>
@@ -177,12 +190,12 @@ export default function WeatherTabContent({ mode }: Props) {
           <>
             <HourlyStrip
               hours={data.hourly}
-              unit={mode === 'temperature' ? tempUnit : mode === 'wind' ? windUnit : mode === 'precipitation' ? 'mm' : mode === 'pressure' ? 'hPa' : '%'}
+              unit={mode === 'temperature' ? tempUnit : mode === 'wind' ? windUnit : mode === 'precipitation' ? 'mm' : mode === 'pressure' ? getPressureUnitSymbol(pressureUnit) : '%'}
               mode={mode}
             />
             <DailyStrip
               days={data.daily}
-              unit={mode === 'temperature' ? tempUnit : mode === 'wind' ? windUnit : mode === 'precipitation' ? 'mm' : mode === 'pressure' ? 'hPa' : '%'}
+              unit={mode === 'temperature' ? tempUnit : mode === 'wind' ? windUnit : mode === 'precipitation' ? 'mm' : mode === 'pressure' ? getPressureUnitSymbol(pressureUnit) : '%'}
               mode={mode}
             />
           </>
@@ -191,7 +204,15 @@ export default function WeatherTabContent({ mode }: Props) {
         <View style={{ height: 24 }} />
       </ScrollView>
 
-      <UnitToggleSheet ref={sheetRef} value={units} onChange={(u) => setUnits(u)} />
+      <UnitToggleSheet 
+        ref={sheetRef} 
+        temperatureUnit={temperatureUnit}
+        pressureUnit={pressureUnit}
+        onTemperatureChange={setTemperatureUnit}
+        onPressureChange={setPressureUnit}
+        value={temperatureUnit} 
+        onChange={setUnits} 
+      />
     </View>
   );
 }

@@ -10,14 +10,24 @@ import { useLocation } from '../LocationContext';
 import { useWeather } from '../../hooks/useWeather';
 import { useWeatherAlerts } from '../../hooks/useWeatherAlerts';
 import { analyzePressure } from '../../utils/weatherUtils';
+import { formatPressure } from '../../types/units';
 
 export default function SummaryTabContent() {
-  const { units, setUnits } = useUnits();
-  const { location, setLocation } = useLocation();
+  const { temperatureUnit, pressureUnit, setTemperatureUnit, setPressureUnit, setUnits } = useUnits();
+  const { location, setLocation, isInitializing } = useLocation();
   const sheetRef = useRef<any>(null);
 
-  const { data, loading, error } = useWeather(location.latitude, location.longitude, units);
-  const { alerts, dismissAlert } = useWeatherAlerts(location.latitude, location.longitude);
+  // Don't fetch weather data if location is not yet determined
+  const shouldFetchWeather = location && !isInitializing;
+  const { data, loading, error } = useWeather(
+    shouldFetchWeather ? location.latitude : 0, 
+    shouldFetchWeather ? location.longitude : 0, 
+    temperatureUnit
+  );
+  const { alerts, dismissAlert } = useWeatherAlerts(
+    shouldFetchWeather ? location.latitude : 0, 
+    shouldFetchWeather ? location.longitude : 0
+  );
 
   if (error) {
     console.log('Weather error', error);
@@ -29,8 +39,8 @@ export default function SummaryTabContent() {
     return d.charAt(0).toUpperCase() + d.slice(1);
   }, [data]);
 
-  const tempUnit = units === 'metric' ? '°C' : '°F';
-  const windUnit = units === 'metric' ? 'km/h' : 'mph';
+  const tempUnit = temperatureUnit === 'metric' ? '°C' : '°F';
+  const windUnit = temperatureUnit === 'metric' ? 'km/h' : 'mph';
 
   // Pressure analysis
   const pressureAnalysis = useMemo(() => {
@@ -156,10 +166,12 @@ export default function SummaryTabContent() {
 
         {/* Current Weather Summary Card */}
         <View style={styles.currentCard}>
-          <Text style={styles.cityName}>
-            {location.name}{location.country ? `, ${location.country}` : ''}
-          </Text>
-          {loading ? (
+          {location && (
+            <Text style={styles.cityName}>
+              {location.name}{location.country ? `, ${location.country}` : ''}
+            </Text>
+          )}
+          {(loading || isInitializing || !location) ? (
             <ActivityIndicator color="#fff" size="large" />
           ) : data ? (
             <>
@@ -224,7 +236,7 @@ export default function SummaryTabContent() {
                 <View style={styles.quickStatCard}>
                   <Text style={styles.quickStatIcon}>🌡️</Text>
                   <Text style={styles.quickStatValue}>
-                    {Math.round(data.current.pressure ?? 0)} hPa
+                    {formatPressure(data.current.pressure ?? 1013, pressureUnit)}
                   </Text>
                   <Text style={styles.quickStatLabel}>Pressure</Text>
                   {pressureAnalysis && (
@@ -303,8 +315,14 @@ export default function SummaryTabContent() {
                   </Text>
                   <Text style={styles.forecastIcon}>{day.icon}</Text>
                   <View style={styles.forecastTemps}>
-                    <Text style={styles.forecastHigh}>{Math.round(day.max)}{tempUnit}</Text>
-                    <Text style={styles.forecastLow}>{Math.round(day.min)}{tempUnit}</Text>
+                    <View style={styles.tempColumn}>
+                      <Text style={styles.tempLabel}>High</Text>
+                      <Text style={styles.forecastHigh}>{Math.round(day.max)}{tempUnit}</Text>
+                    </View>
+                    <View style={styles.tempColumn}>
+                      <Text style={styles.tempLabel}>Low</Text>
+                      <Text style={styles.forecastLow}>{Math.round(day.min)}{tempUnit}</Text>
+                    </View>
                   </View>
                   <View style={styles.forecastPrecipContainer}>
                     <Text style={styles.forecastPrecip}>
@@ -321,7 +339,15 @@ export default function SummaryTabContent() {
         <View style={{ height: 24 }} />
       </ScrollView>
 
-      <UnitToggleSheet ref={sheetRef} value={units} onChange={(u) => setUnits(u)} />
+      <UnitToggleSheet 
+        ref={sheetRef} 
+        temperatureUnit={temperatureUnit}
+        pressureUnit={pressureUnit}
+        onTemperatureChange={setTemperatureUnit}
+        onPressureChange={setPressureUnit}
+        value={temperatureUnit} 
+        onChange={setUnits} 
+      />
     </View>
   );
 }
@@ -518,6 +544,16 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     justifyContent: 'space-between',
+  },
+  tempColumn: {
+    alignItems: 'center',
+  },
+  tempLabel: {
+    fontSize: 10,
+    color: colors.text,
+    opacity: 0.6,
+    marginBottom: 2,
+    fontWeight: '500',
   },
   forecastHigh: {
     fontSize: 14,

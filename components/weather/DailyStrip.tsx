@@ -6,6 +6,8 @@ import { colors } from '../../styles/commonStyles';
 import { DayForecast } from '../../types/weather';
 import CompassRose from './CompassRose';
 import HumidityBar from './HumidityBar';
+import { useUnits } from '../UnitsContext';
+import { formatPressure } from '../../types/units';
 
 function weatherIcon(icon: string) {
   return icon;
@@ -21,6 +23,7 @@ interface Props {
 
 export default function DailyStrip({ days, unit, mode = 'temperature' }: Props) {
   const router = useRouter();
+  const { pressureUnit } = useUnits();
 
   const handlePress = () => {
     console.log(`[DAILY NAV] Starting navigation with mode: ${mode}, unit: ${unit}, days count: ${days.length}`);
@@ -141,7 +144,7 @@ export default function DailyStrip({ days, unit, mode = 'temperature' }: Props) 
               )}
               {mode === 'pressure' && (
                 <Text style={styles.value}>
-                  {d.pressureMean ? `${Math.round(d.pressureMean)} hPa` : 'N/A'}
+                  {d.pressureMean ? formatPressure(d.pressureMean, pressureUnit) : 'N/A'}
                 </Text>
               )}
             </View>
