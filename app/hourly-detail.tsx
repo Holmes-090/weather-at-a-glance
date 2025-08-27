@@ -29,7 +29,7 @@ function SimpleLineChart({ data, width, height, mode, unit }: {
   mode: Mode;
   unit: string;
 }) {
-  const padding = { left: 50, right: 20, top: 20, bottom: 40 };
+  const padding = { left: 60, right: 20, top: 20, bottom: 40 };
   const chartWidth = width - padding.left - padding.right;
   const chartHeight = height - padding.top - padding.bottom;
 
@@ -427,14 +427,13 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   hourlyIconContainer: {
-    height: 36,
-    marginVertical: 6,
+    height: 52,
+    marginVertical: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
   hourlyIcon: {
     fontSize: 28,
-    marginVertical: 6,
     color: colors.text,
   } as any,
   hourlyValue: {

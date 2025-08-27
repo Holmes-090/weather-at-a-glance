@@ -204,14 +204,14 @@ const styles = StyleSheet.create({
     opacity: 0.85,
   },
   iconContainer: {
-    height: 34,
+    height: 40,
     marginTop: 4,
+    marginBottom: 2,
     alignItems: 'center',
     justifyContent: 'center',
   },
   icon: {
     fontSize: 26,
-    marginTop: 4,
     color: colors.text,
   } as any,
   valueText: {

@@ -29,7 +29,7 @@ function DailyLineChart({ data, width, height, mode, unit }: {
   mode: Mode;
   unit: string;
 }) {
-  const padding = { left: 50, right: 20, top: 20, bottom: 40 };
+  const padding = { left: 60, right: 20, top: 20, bottom: 40 };
   const chartWidth = width - padding.left - padding.right;
   const chartHeight = height - padding.top - padding.bottom;
 
@@ -431,6 +431,10 @@ export default function DailyDetailScreen() {
                   {mode === 'humidity' && (
                     <Text style={styles.dailyValue}>{Math.round(day.humidityMean ?? 0)}%</Text>
                   )}
+                  
+                  {mode === 'pressure' && (
+                    <Text style={styles.dailyValue}>{Math.round(day.pressureMean ?? 1013)} hPa</Text>
+                  )}
                 </View>
               ))}
             </View>
@@ -557,14 +561,14 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   dailyIconContainer: {
-    height: 32,
-    marginVertical: 6,
+    height: 42,
+    marginVertical: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
   dailyIcon: {
     fontSize: 28,
-    marginVertical: 6,
+    marginVertical: 8,
     color: colors.text,
   } as any,
   dailyValue: {
