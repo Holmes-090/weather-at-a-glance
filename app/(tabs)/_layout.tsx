@@ -10,7 +10,6 @@ export default function TabsLayout() {
     <UnitsProvider>
       <LocationProvider>
         <Tabs
-          initialRouteName="summary"
           screenOptions={{
             headerShown: false,
             tabBarStyle: {

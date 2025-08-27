@@ -108,7 +108,7 @@ export function getPressureTrendArrow(pressureDelta?: number | null): string {
 
 // UV Index utility functions
 export function getUVIndexDescription(uvIndex?: number): string {
-  if (!uvIndex || uvIndex < 0) return 'Unknown';
+  if (uvIndex === undefined || uvIndex === null || uvIndex < 0) return 'Unknown';
   if (uvIndex <= 2) return 'Low';
   if (uvIndex <= 5) return 'Moderate';
   if (uvIndex <= 7) return 'High';
@@ -117,8 +117,13 @@ export function getUVIndexDescription(uvIndex?: number): string {
 }
 
 export function formatUVIndex(uvIndex?: number): string {
-  if (!uvIndex || uvIndex < 0) return '0 "Unknown"';
+  if (uvIndex === undefined || uvIndex === null || uvIndex < 0) return '0 "Unknown"';
   return `${Math.round(uvIndex)} "${getUVIndexDescription(uvIndex)}"`;
+}
+
+export function formatUVIndexValue(uvIndex?: number): string {
+  if (uvIndex === undefined || uvIndex === null || uvIndex < 0) return '0';
+  return Math.round(uvIndex).toString();
 }
 
 // Visibility/distance conversion utilities

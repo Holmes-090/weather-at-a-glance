@@ -9,7 +9,7 @@ import { useUnits } from '../UnitsContext';
 import { useLocation } from '../LocationContext';
 import { useWeather } from '../../hooks/useWeather';
 import { useWeatherAlerts } from '../../hooks/useWeatherAlerts';
-import { analyzePressure, formatUVIndex, convertVisibility, formatDewPoint } from '../../utils/weatherUtils';
+import { analyzePressure, formatUVIndex, formatUVIndexValue, getUVIndexDescription, convertVisibility, formatDewPoint } from '../../utils/weatherUtils';
 import { formatPressure } from '../../types/units';
 
 export default function SummaryTabContent() {
@@ -210,11 +210,11 @@ export default function SummaryTabContent() {
                 </View>
 
                 <View style={styles.quickStatCard}>
-                  <Text style={styles.quickStatIcon}>🌧️</Text>
+                  <Text style={styles.quickStatIcon}>🌊</Text>
                   <Text style={styles.quickStatValue}>
-                    {(data.current.precipitationMm ?? 0).toFixed(1)}mm
+                    {Math.round(data.current.precipitationProb ?? 0)}%
                   </Text>
-                  <Text style={styles.quickStatLabel}>Precipitation</Text>
+                  <Text style={styles.quickStatLabel}>Precipitation Chance</Text>
                 </View>
 
                 <View style={styles.quickStatCard}>
@@ -249,9 +249,12 @@ export default function SummaryTabContent() {
                 <View style={styles.quickStatCard}>
                   <Text style={styles.quickStatIcon}>☀️</Text>
                   <Text style={styles.quickStatValue}>
-                    {formatUVIndex(data.current.uvIndex)}
+                    {formatUVIndexValue(data.current.uvIndex)}
                   </Text>
                   <Text style={styles.quickStatLabel}>UV Index</Text>
+                  <Text style={styles.quickStatFeelsLike}>
+                    {getUVIndexDescription(data.current.uvIndex)}
+                  </Text>
                 </View>
 
                 <View style={styles.quickStatCard}>
@@ -298,11 +301,11 @@ export default function SummaryTabContent() {
 
               <View style={styles.highlightCard}>
                 <View style={styles.highlightRow}>
-                  <Text style={styles.highlightIcon}>🌊</Text>
+                  <Text style={styles.highlightIcon}>🌧️</Text>
                   <View style={styles.highlightContent}>
-                    <Text style={styles.highlightTitle}>Precipitation Chance</Text>
+                    <Text style={styles.highlightTitle}>Precipitation Sum</Text>
                     <Text style={styles.highlightValue}>
-                      {Math.round(data.current.precipitationProb ?? 0)}% chance
+                      {(data.current.precipitationMm ?? 0).toFixed(1)}mm
                     </Text>
                   </View>
                 </View>
@@ -357,10 +360,10 @@ export default function SummaryTabContent() {
                     </View>
                   </View>
                   <View style={styles.forecastPrecipContainer}>
+                    <Text style={styles.forecastPrecipLabel}>Precip</Text>
                     <Text style={styles.forecastPrecip}>
                       {Math.round(day.precipProbMax ?? 0)}%
                     </Text>
-                    <Text style={styles.forecastPrecipLabel}>rain</Text>
                   </View>
                 </View>
               ))}
