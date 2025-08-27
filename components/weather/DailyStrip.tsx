@@ -123,14 +123,24 @@ export default function DailyStrip({ days, unit, mode = 'temperature' }: Props) 
               </View>
               
               {mode === 'temperature' && (
-                <Text style={styles.value}>
-                  {Math.round(d.max)}{unit} / {Math.round(d.min)}{unit}
-                </Text>
+                <View style={styles.verticalValues}>
+                  <Text style={styles.highValue}>
+                    {Math.round(d.max)}{unit}
+                  </Text>
+                  <Text style={styles.lowValue}>
+                    {Math.round(d.min)}{unit}
+                  </Text>
+                </View>
               )}
               {mode === 'precipitation' && (
-                <Text style={styles.value}>
-                  {(d.precipSumMm ?? 0).toFixed(1)}mm · {Math.round(d.precipProbMax ?? 0)}%
-                </Text>
+                <View style={styles.verticalValues}>
+                  <Text style={styles.highValue}>
+                    {(d.precipSumMm ?? 0).toFixed(1)}mm
+                  </Text>
+                  <Text style={styles.lowValue}>
+                    {Math.round(d.precipProbMax ?? 0)}%
+                  </Text>
+                </View>
               )}
               {mode === 'wind' && (
                 <Text style={styles.value}>
@@ -217,5 +227,23 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     textAlign: 'center',
+  },
+  verticalValues: {
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  highValue: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  lowValue: {
+    color: colors.text,
+    fontSize: 12,
+    fontWeight: '500',
+    textAlign: 'center',
+    opacity: 0.8,
+    marginTop: 2,
   },
 });

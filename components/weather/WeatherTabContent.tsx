@@ -120,7 +120,7 @@ export default function WeatherTabContent({ mode }: Props) {
       case 'temperature':
         return `H ${Math.round(data.today.max)}${tempUnit}   L ${Math.round(data.today.min)}${tempUnit}`;
       case 'precipitation':
-        return `Sum ${(data.daily[0]?.precipSumMm ?? 0).toFixed(1)}mm   Max ${Math.round(data.daily[0]?.precipProbMax ?? 0)}%`;
+        return '';
       case 'wind':
         return `Max ${Math.round(data.daily[0]?.windSpeedMax ?? 0)}${windUnit}`;
       case 'humidity':
