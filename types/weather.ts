@@ -49,6 +49,10 @@ export interface WeatherData {
     dewPoint?: number;
     visibility?: number; // in km
     cloudCover?: number; // percentage 0-100
+    // Air Quality data
+    europeanAqi?: number; // European AQI (0-100+)
+    pm2_5?: number; // PM2.5 in μg/m³
+    pm10?: number; // PM10 in μg/m³
     deltaPrecipFromYesterday?: number | null;
     deltaWindFromYesterday?: number | null;
     deltaHumidityFromYesterday?: number | null;

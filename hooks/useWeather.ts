@@ -26,6 +26,18 @@ export function useWeather(lat: number, lon: number, units: 'metric' | 'imperial
         if (!res.ok) throw new Error('Failed to fetch weather');
         const json = await res.json();
 
+        // Fetch air quality data
+        let airQualityData = null;
+        try {
+          const airQualityUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=european_aqi,pm2_5,pm10&timezone=auto`;
+          const airQualityRes = await fetch(airQualityUrl);
+          if (airQualityRes.ok) {
+            airQualityData = await airQualityRes.json();
+          }
+        } catch (e) {
+          console.log('Failed to fetch air quality data', e);
+        }
+
         const tz = json.timezone || 'UTC';
 
         // Current
@@ -204,6 +216,10 @@ export function useWeather(lat: number, lon: number, units: 'metric' | 'imperial
             dewPoint: nowIndex >= 0 ? hourlyDewPoint[nowIndex] : hourlyDewPoint[0],
             visibility: nowIndex >= 0 ? hourlyVisibility[nowIndex] : hourlyVisibility[0],
             cloudCover: nowIndex >= 0 ? hourlyCloudCover[nowIndex] : hourlyCloudCover[0],
+            // Air Quality data
+            europeanAqi: airQualityData?.current?.european_aqi,
+            pm2_5: airQualityData?.current?.pm2_5,
+            pm10: airQualityData?.current?.pm10,
             deltaPrecipFromYesterday,
             deltaWindFromYesterday,
             deltaHumidityFromYesterday,

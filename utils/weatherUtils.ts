@@ -126,6 +126,27 @@ export function formatUVIndexValue(uvIndex?: number): string {
   return Math.round(uvIndex).toString();
 }
 
+// Air Quality utilities
+export function getAirQualityDescription(aqi?: number): string {
+  if (aqi === undefined || aqi === null || aqi < 0) return 'Unknown';
+  if (aqi <= 20) return 'Good';
+  if (aqi <= 40) return 'Fair';
+  if (aqi <= 60) return 'Moderate';
+  if (aqi <= 80) return 'Poor';
+  if (aqi <= 100) return 'Very Poor';
+  return 'Extremely Poor';
+}
+
+export function formatAirQuality(aqi?: number): string {
+  if (aqi === undefined || aqi === null || aqi < 0) return '0 "Unknown"';
+  return `${Math.round(aqi)} "${getAirQualityDescription(aqi)}"`;
+}
+
+export function formatAirQualityValue(aqi?: number): string {
+  if (aqi === undefined || aqi === null || aqi < 0) return '0';
+  return Math.round(aqi).toString();
+}
+
 // Visibility/distance conversion utilities
 export function convertVisibility(kmValue: number, isMetric: boolean): string {
   if (isMetric) {

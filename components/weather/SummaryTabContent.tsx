@@ -9,7 +9,7 @@ import { useUnits } from '../UnitsContext';
 import { useLocation } from '../LocationContext';
 import { useWeather } from '../../hooks/useWeather';
 import { useWeatherAlerts } from '../../hooks/useWeatherAlerts';
-import { analyzePressure, formatUVIndex, formatUVIndexValue, getUVIndexDescription, convertVisibility, formatDewPoint } from '../../utils/weatherUtils';
+import { analyzePressure, formatUVIndex, formatUVIndexValue, getUVIndexDescription, convertVisibility, formatDewPoint, formatAirQualityValue, getAirQualityDescription } from '../../utils/weatherUtils';
 import { formatPressure } from '../../types/units';
 
 export default function SummaryTabContent() {
@@ -254,6 +254,17 @@ export default function SummaryTabContent() {
                   <Text style={styles.quickStatLabel}>UV Index</Text>
                   <Text style={styles.quickStatFeelsLike}>
                     {getUVIndexDescription(data.current.uvIndex)}
+                  </Text>
+                </View>
+
+                <View style={styles.quickStatCard}>
+                  <Text style={styles.quickStatIcon}>🌬️</Text>
+                  <Text style={styles.quickStatValue}>
+                    {formatAirQualityValue(data.current.europeanAqi)}
+                  </Text>
+                  <Text style={styles.quickStatLabel}>Air Quality</Text>
+                  <Text style={styles.quickStatFeelsLike}>
+                    {getAirQualityDescription(data.current.europeanAqi)}
                   </Text>
                 </View>
 

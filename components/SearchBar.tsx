@@ -16,6 +16,7 @@ export default function SearchBar({ placeholder = 'Search', onSelectCity, onOpti
   const [results, setResults] = useState<GeocodeResult[]>([]);
   const [open, setOpen] = useState(false);
   const typingTimeout = useRef<any>(null);
+  const isSelecting = useRef(false); // Use ref to prevent re-renders
 
   useEffect(() => {
     if (!query) {
@@ -23,23 +24,72 @@ export default function SearchBar({ placeholder = 'Search', onSelectCity, onOpti
       setOpen(false);
       return;
     }
+    
+    // Don't search if we're in the middle of selecting
+    if (isSelecting.current) {
+      return;
+    }
+    
     if (typingTimeout.current) clearTimeout(typingTimeout.current);
     typingTimeout.current = setTimeout(async () => {
+      // Double-check we're not selecting before making the API call
+      if (isSelecting.current) return;
+      
       try {
         const r = await searchCities(query);
-        setResults(r);
-        setOpen(true);
+        // Only update if we're still not selecting
+        if (!isSelecting.current) {
+          setResults(r);
+          setOpen(true);
+        }
       } catch (e) {
         console.log('Geocode error', e);
       }
     }, 300);
+
+    return () => {
+      if (typingTimeout.current) {
+        clearTimeout(typingTimeout.current);
+      }
+    };
   }, [query]);
 
   const handleSelect = (r: GeocodeResult) => {
-    setQuery(`${r.name}${r.country ? ', ' + r.country : ''}`);
+    isSelecting.current = true; // Block any searches
+    
+    // Clear timeout to prevent pending searches
+    if (typingTimeout.current) {
+      clearTimeout(typingTimeout.current);
+    }
+    
+    setResults([]);
     setOpen(false);
+    setQuery(`${r.name}${r.country ? ', ' + r.country : ''}`);
     Keyboard.dismiss();
     onSelectCity({ name: r.name, latitude: r.latitude, longitude: r.longitude, country: r.country });
+    
+    // Reset the selection flag after a delay to allow the query to settle
+    setTimeout(() => {
+      isSelecting.current = false;
+    }, 100);
+  };
+
+  const handleClear = () => {
+    isSelecting.current = false;
+    if (typingTimeout.current) {
+      clearTimeout(typingTimeout.current);
+    }
+    setQuery('');
+    setResults([]);
+    setOpen(false);
+  };
+
+  const handleTextChange = (text: string) => {
+    // If user starts typing, reset the selection flag
+    if (text !== query) {
+      isSelecting.current = false;
+    }
+    setQuery(text);
   };
 
   return (
@@ -50,18 +100,23 @@ export default function SearchBar({ placeholder = 'Search', onSelectCity, onOpti
           placeholder={placeholder}
           placeholderTextColor="rgba(255,255,255,0.6)"
           value={query}
-          onChangeText={setQuery}
+          onChangeText={handleTextChange}
           style={styles.input}
           returnKeyType="search"
           onSubmitEditing={() => {
-            if (results[0]) handleSelect(results[0]);
+            if (results[0] && !isSelecting.current) handleSelect(results[0]);
           }}
         />
+        {query.length > 0 && (
+          <TouchableOpacity onPress={handleClear} style={styles.clearButton} activeOpacity={0.8}>
+            <Icon name="close-circle" size={16} color={colors.text} />
+          </TouchableOpacity>
+        )}
         <TouchableOpacity onPress={onOptionsPress} style={styles.optionsButton} activeOpacity={0.8}>
           <Icon name="options" size={20} color={colors.text} />
         </TouchableOpacity>
       </View>
-      {open && results.length > 0 && (
+      {open && results.length > 0 && !isSelecting.current && (
         <View style={styles.dropdown}>
           <ScrollView keyboardShouldPersistTaps="handled" style={{ maxHeight: 240 }}>
             {results.map((r) => (
@@ -95,6 +150,10 @@ const styles = StyleSheet.create({
     color: colors.text,
     paddingHorizontal: 8,
     fontSize: 16,
+  },
+  clearButton: {
+    paddingHorizontal: 6,
+    paddingVertical: 6,
   },
   optionsButton: {
     paddingLeft: 10,

@@ -2,6 +2,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import type { TemperatureUnit, PressureUnit, UnitsConfig } from '../types/units';
 import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Legacy export for backward compatibility
 export type UnitType = TemperatureUnit;
@@ -19,32 +20,63 @@ type UnitsContextType = {
 const UnitsContext = createContext<UnitsContextType | undefined>(undefined);
 
 export function UnitsProvider({ children }: { children: React.ReactNode }) {
-  const [temperatureUnit, setTemperatureUnit] = useState<TemperatureUnit>(() => {
-    if (Platform.OS === 'web') {
-      const v = localStorage.getItem('temperatureUnit');
-      if (v === 'metric' || v === 'imperial') return v;
-    }
-    return 'metric';
-  });
+  const [temperatureUnit, setTemperatureUnit] = useState<TemperatureUnit>('metric');
+  const [pressureUnit, setPressureUnit] = useState<PressureUnit>('hPa');
+  const [isLoaded, setIsLoaded] = useState(false);
 
-  const [pressureUnit, setPressureUnit] = useState<PressureUnit>(() => {
-    if (Platform.OS === 'web') {
-      const v = localStorage.getItem('pressureUnit');
-      if (v === 'hPa' || v === 'inHg' || v === 'kPa') return v;
-    }
-    return 'hPa';
-  });
-
+  // Load initial values from storage
   useEffect(() => {
-    if (Platform.OS === 'web') {
+    async function loadUnits() {
       try {
-        localStorage.setItem('temperatureUnit', temperatureUnit);
-        localStorage.setItem('pressureUnit', pressureUnit);
+        if (Platform.OS === 'web') {
+          const tempUnit = localStorage.getItem('temperatureUnit');
+          const pressUnit = localStorage.getItem('pressureUnit');
+          if (tempUnit === 'metric' || tempUnit === 'imperial') {
+            setTemperatureUnit(tempUnit);
+          }
+          if (pressUnit === 'hPa' || pressUnit === 'inHg' || pressUnit === 'kPa') {
+            setPressureUnit(pressUnit);
+          }
+        } else {
+          // Use AsyncStorage for mobile platforms
+          const tempUnit = await AsyncStorage.getItem('temperatureUnit');
+          const pressUnit = await AsyncStorage.getItem('pressureUnit');
+          if (tempUnit === 'metric' || tempUnit === 'imperial') {
+            setTemperatureUnit(tempUnit);
+          }
+          if (pressUnit === 'hPa' || pressUnit === 'inHg' || pressUnit === 'kPa') {
+            setPressureUnit(pressUnit);
+          }
+        }
+      } catch (e) {
+        console.log('Could not load units from storage', e);
+      } finally {
+        setIsLoaded(true);
+      }
+    }
+    loadUnits();
+  }, []);
+
+  // Save units to storage when they change
+  useEffect(() => {
+    if (!isLoaded) return; // Don't save initial default values
+    
+    async function saveUnits() {
+      try {
+        if (Platform.OS === 'web') {
+          localStorage.setItem('temperatureUnit', temperatureUnit);
+          localStorage.setItem('pressureUnit', pressureUnit);
+        } else {
+          // Use AsyncStorage for mobile platforms
+          await AsyncStorage.setItem('temperatureUnit', temperatureUnit);
+          await AsyncStorage.setItem('pressureUnit', pressureUnit);
+        }
       } catch (e) {
         console.log('Could not persist units', e);
       }
     }
-  }, [temperatureUnit, pressureUnit]);
+    saveUnits();
+  }, [temperatureUnit, pressureUnit, isLoaded]);
 
   const units: UnitsConfig = useMemo(() => ({
     temperature: temperatureUnit,
