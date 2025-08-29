@@ -1,9 +1,9 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { colors } from '../../styles/commonStyles';
-import { DayForecast } from '../../types/weather';
+import { DayForecast, HourForecast } from '../../types/weather';
 import CompassRose from './CompassRose';
 import HumidityBar from './HumidityBar';
 import { useUnits } from '../UnitsContext';
@@ -17,13 +17,37 @@ type Mode = 'temperature' | 'precipitation' | 'wind' | 'humidity' | 'pressure';
 
 interface Props {
   days: DayForecast[];
+  hourly?: HourForecast[]; // Add hourly data for expandable forecast
   unit: string;
   mode?: Mode;
 }
 
-export default function DailyStrip({ days, unit, mode = 'temperature' }: Props) {
+export default function DailyStrip({ days, hourly = [], unit, mode = 'temperature' }: Props) {
   const router = useRouter();
   const { pressureUnit } = useUnits();
+  const [expandedDay, setExpandedDay] = useState<string | null>(null);
+
+  // Filter hourly data for a specific day
+  const getHourlyForDay = (dayDate: string): HourForecast[] => {
+    if (!hourly.length) return [];
+    
+    const dayStart = new Date(dayDate);
+    const dayEnd = new Date(dayDate);
+    dayEnd.setDate(dayEnd.getDate() + 1);
+    
+    return hourly.filter(hour => {
+      const hourDate = new Date(hour.time);
+      return hourDate >= dayStart && hourDate < dayEnd;
+    });
+  };
+
+  const handleDayPress = (dayDate: string) => {
+    if (expandedDay === dayDate) {
+      setExpandedDay(null); // Collapse if already expanded
+    } else {
+      setExpandedDay(dayDate); // Expand this day
+    }
+  };
 
   const handlePress = () => {
     console.log(`[DAILY NAV] Starting navigation with mode: ${mode}, unit: ${unit}, days count: ${days.length}`);
@@ -98,7 +122,15 @@ export default function DailyStrip({ days, unit, mode = 'temperature' }: Props) 
       >
         <View style={styles.row}>
           {days.map((d) => (
-            <View key={d.date} style={styles.item}>
+            <TouchableOpacity 
+              key={d.date} 
+              style={[
+                styles.item,
+                expandedDay === d.date && styles.itemExpanded
+              ]}
+              onPress={() => handleDayPress(d.date)}
+              activeOpacity={0.7}
+            >
               <Text style={styles.label}>{d.label}</Text>
               
               {/* Conditional icon rendering based on mode */}
@@ -157,10 +189,56 @@ export default function DailyStrip({ days, unit, mode = 'temperature' }: Props) 
                   {d.pressureMean ? formatPressure(d.pressureMean, pressureUnit) : 'N/A'}
                 </Text>
               )}
-            </View>
+            </TouchableOpacity>
           ))}
         </View>
       </ScrollView>
+      
+      {/* Hourly forecast dropdown for expanded day */}
+      {expandedDay && (
+        <View style={styles.hourlyDropdown}>
+          <Text style={styles.hourlyTitle}>Hourly Forecast</Text>
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            style={styles.hourlyScroll}
+          >
+            <View style={styles.hourlyRow}>
+              {getHourlyForDay(expandedDay).map((hour) => (
+                <View key={hour.time} style={styles.hourlyItem}>
+                  <Text style={styles.hourlyTime}>
+                    {new Date(hour.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </Text>
+                  <Text style={styles.hourlyIcon}>{hour.icon}</Text>
+                  <Text style={styles.hourlyTemp}>
+                    {Math.round(hour.temperature)}{mode === 'temperature' ? unit : ''}
+                  </Text>
+                  {mode === 'precipitation' && (
+                    <Text style={styles.hourlyDetail}>
+                      {Math.round(hour.precipitationProb ?? 0)}%
+                    </Text>
+                  )}
+                  {mode === 'humidity' && (
+                    <Text style={styles.hourlyDetail}>
+                      {Math.round(hour.humidity ?? 0)}%
+                    </Text>
+                  )}
+                  {mode === 'wind' && (
+                    <Text style={styles.hourlyDetail}>
+                      {Math.round(hour.windSpeed ?? 0)}{unit}
+                    </Text>
+                  )}
+                  {mode === 'pressure' && (
+                    <Text style={styles.hourlyDetail}>
+                      {hour.pressure ? formatPressure(hour.pressure, pressureUnit) : 'N/A'}
+                    </Text>
+                  )}
+                </View>
+              ))}
+            </View>
+          </ScrollView>
+        </View>
+      )}
     </View>
   );
 }
@@ -205,6 +283,10 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 12,
   },
+  itemExpanded: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    transform: [{ scale: 1.02 }],
+  },
   label: {
     color: colors.text,
     fontSize: 12,
@@ -245,5 +327,55 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     opacity: 0.8,
     marginTop: 2,
+  },
+  // Hourly dropdown styles
+  hourlyDropdown: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  hourlyTitle: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 8,
+    paddingHorizontal: 4,
+  },
+  hourlyScroll: {
+    maxHeight: 120,
+  },
+  hourlyRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  hourlyItem: {
+    minWidth: 70,
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 8,
+  },
+  hourlyTime: {
+    color: colors.text,
+    fontSize: 10,
+    opacity: 0.8,
+    marginBottom: 4,
+  },
+  hourlyIcon: {
+    fontSize: 18,
+    marginBottom: 4,
+  },
+  hourlyTemp: {
+    color: colors.text,
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  hourlyDetail: {
+    color: colors.text,
+    fontSize: 10,
+    opacity: 0.7,
   },
 });

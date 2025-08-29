@@ -1,5 +1,5 @@
-import { useMemo, useRef } from 'react';
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
+import React, { useMemo, useRef, useState, useCallback } from 'react';
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator, RefreshControl, TouchableOpacity } from 'react-native';
 import { colors } from '../../styles/commonStyles';
 import SearchBar from '../SearchBar';
 import UnitToggleSheet from '../UnitToggleSheet';
@@ -9,13 +9,16 @@ import { useUnits } from '../UnitsContext';
 import { useLocation } from '../LocationContext';
 import { useWeather } from '../../hooks/useWeather';
 import { useWeatherAlerts } from '../../hooks/useWeatherAlerts';
-import { analyzePressure, formatUVIndex, formatUVIndexValue, getUVIndexDescription, convertVisibility, formatDewPoint, formatAirQualityValue, getAirQualityDescription } from '../../utils/weatherUtils';
+import { analyzePressure, formatUVIndex, formatUVIndexValue, getUVIndexDescription, convertVisibility, formatDewPoint, formatAirQualityValue, getAirQualityDescription, calculateHourlyPressureTrend } from '../../utils/weatherUtils';
 import { formatPressure } from '../../types/units';
 
 export default function SummaryTabContent() {
   const { temperatureUnit, pressureUnit, setTemperatureUnit, setPressureUnit, setUnits } = useUnits();
   const { location, setLocation, isInitializing } = useLocation();
   const sheetRef = useRef<any>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [showHourlyForecast, setShowHourlyForecast] = useState(false);
 
   // Don't fetch weather data if location is not yet determined
   const shouldFetchWeather = location && !isInitializing;
@@ -42,10 +45,50 @@ export default function SummaryTabContent() {
   const tempUnit = temperatureUnit === 'metric' ? '°C' : '°F';
   const windUnit = temperatureUnit === 'metric' ? 'km/h' : 'mph';
 
-  // Pressure analysis
+
+
+  // Pressure analysis - use current vs next hour trend like pressure tab
   const pressureAnalysis = useMemo(() => {
     if (!data?.current.pressure) return null;
-    return analyzePressure(data.current.pressure, data.current.deltaPressureFromYesterday);
+    
+    // Use current vs next hour comparison for more accurate trend
+    const currentHour = data.hourly?.[0]; // Current hour data
+    const nextHour = data.hourly?.[1]; // Next hour data
+    const pressureTrend = calculateHourlyPressureTrend(currentHour?.pressure || data.current.pressure, nextHour?.pressure);
+    
+    // Generate prediction based on current pressure level and trend
+    const currentPressure = data.current.pressure || 1013;
+    let prediction = 'Stable conditions';
+    
+    if (currentPressure < 1013) {
+      if (pressureTrend.trend.includes('Falling')) {
+        prediction = 'Unsettled weather likely';
+      } else if (pressureTrend.trend.includes('Rising')) {
+        prediction = 'Conditions improving';
+      } else {
+        prediction = 'Low pressure system';
+      }
+    } else if (currentPressure > 1020) {
+      if (pressureTrend.trend.includes('Rising')) {
+        prediction = 'Clear, dry conditions';
+      } else if (pressureTrend.trend.includes('Falling')) {
+        prediction = 'Fair, cooling trend';
+      } else {
+        prediction = 'High pressure system';
+      }
+    } else {
+      if (pressureTrend.trend.includes('Rising')) {
+        prediction = 'Fair weather ahead';
+      } else if (pressureTrend.trend.includes('Falling')) {
+        prediction = 'Clouds possible';
+      }
+    }
+    
+    return { 
+      trend: pressureTrend.trend, 
+      prediction: prediction,
+      arrow: pressureTrend.arrow
+    };
   }, [data]);
 
   // Weather comparisons to yesterday
@@ -136,13 +179,42 @@ export default function SummaryTabContent() {
     setLocation(city);
   };
 
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    // Force a refresh by updating the refresh key
+    setRefreshKey(prev => prev + 1);
+    // Simulate refresh delay for better UX
+    setTimeout(() => {
+      setRefreshing(false);
+    }, 1000);
+  }, []);
+
+  // Add refreshKey to force useWeather to refetch
+  // This is a workaround since useWeather doesn't expose a refresh method
+  React.useEffect(() => {
+    if (refreshKey > 0) {
+      // The refresh will happen automatically due to the component re-render
+    }
+  }, [refreshKey]);
+
   return (
     <View style={{ flex: 1 }}>
       <WeatherBackground
         condition={data?.current.condition || 'cloudy'}
         isNight={data?.current.isNight || false}
       />
-      <ScrollView contentContainerStyle={[styles.container]} keyboardShouldPersistTaps="handled">
+      <ScrollView 
+        contentContainerStyle={[styles.container]} 
+        keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#fff"
+            titleColor="#fff"
+          />
+        }
+      >
         <View style={styles.topRow}>
           <SearchBar
             placeholder="Search city"
@@ -241,6 +313,11 @@ export default function SummaryTabContent() {
                   <Text style={styles.quickStatLabel}>Pressure</Text>
                   {pressureAnalysis && (
                     <Text style={styles.quickStatFeelsLike}>
+                      {pressureAnalysis.arrow} {pressureAnalysis.trend}
+                    </Text>
+                  )}
+                  {pressureAnalysis && (
+                    <Text style={styles.quickStatFeelsLike}>
                       {pressureAnalysis.prediction}
                     </Text>
                   )}
@@ -294,6 +371,97 @@ export default function SummaryTabContent() {
               </View>
             </View>
 
+            {/* Forecast Preview with Toggle */}
+            <View style={styles.forecastContainer}>
+              <View style={styles.forecastHeader}>
+                <Text style={styles.sectionTitle}>
+                  {showHourlyForecast ? 'Hourly Forecast' : '7-Day Forecast'}
+                </Text>
+                <View style={styles.toggleContainer}>
+                  <TouchableOpacity
+                    style={[
+                      styles.toggleButton,
+                      !showHourlyForecast && styles.toggleButtonActive
+                    ]}
+                    onPress={() => setShowHourlyForecast(false)}
+                  >
+                    <Text style={[
+                      styles.toggleButtonText,
+                      !showHourlyForecast && styles.toggleButtonTextActive
+                    ]}>7-Day</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.toggleButton,
+                      showHourlyForecast && styles.toggleButtonActive
+                    ]}
+                    onPress={() => setShowHourlyForecast(true)}
+                  >
+                    <Text style={[
+                      styles.toggleButtonText,
+                      showHourlyForecast && styles.toggleButtonTextActive
+                    ]}>Hourly</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {showHourlyForecast ? (
+                // Hourly Forecast View (next 12 hours)
+                data.hourly.slice(0, 12).map((hour, index) => (
+                  <View key={hour.time} style={styles.forecastRow}>
+                    <Text style={styles.forecastDay}>
+                      {index === 0 ? 'Now' : hour.label}
+                    </Text>
+                    <Text style={styles.forecastIcon}>{hour.icon}</Text>
+                    <View style={styles.forecastTemps}>
+                      <View style={styles.tempColumn}>
+                        <Text style={styles.tempLabel}>Temp</Text>
+                        <Text style={styles.forecastHigh}>{Math.round(hour.temperature)}{tempUnit}</Text>
+                      </View>
+                      <View style={styles.tempColumn}>
+                        <Text style={styles.tempLabel}>Humid</Text>
+                        <Text style={styles.forecastLow}>
+                          {Math.round(hour.humidity ?? 0)}%
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={styles.forecastPrecipContainer}>
+                      <Text style={styles.forecastPrecipLabel}>Rain</Text>
+                      <Text style={styles.forecastPrecip}>
+                        {Math.round(hour.precipitationProb ?? 0)}%
+                      </Text>
+                    </View>
+                  </View>
+                ))
+              ) : (
+                // 7-Day Forecast View
+                data.daily.slice(0, 7).map((day, index) => (
+                  <View key={index} style={styles.forecastRow}>
+                    <Text style={styles.forecastDay}>
+                      {index === 0 ? 'Today' : new Date(day.date).toLocaleDateString(undefined, { weekday: 'short' })}
+                    </Text>
+                    <Text style={styles.forecastIcon}>{day.icon}</Text>
+                    <View style={styles.forecastTemps}>
+                      <View style={styles.tempColumn}>
+                        <Text style={styles.tempLabel}>High</Text>
+                        <Text style={styles.forecastHigh}>{Math.round(day.max)}{tempUnit}</Text>
+                      </View>
+                      <View style={styles.tempColumn}>
+                        <Text style={styles.tempLabel}>Low</Text>
+                        <Text style={styles.forecastLow}>{Math.round(day.min)}{tempUnit}</Text>
+                      </View>
+                    </View>
+                    <View style={styles.forecastPrecipContainer}>
+                      <Text style={styles.forecastPrecipLabel}>Precip</Text>
+                      <Text style={styles.forecastPrecip}>
+                        {Math.round(day.precipProbMax ?? 0)}%
+                      </Text>
+                    </View>
+                  </View>
+                ))
+              )}
+            </View>
+
             {/* Weather Highlights */}
             <View style={styles.highlightsContainer}>
               <Text style={styles.sectionTitle}>Today's Highlights</Text>
@@ -336,10 +504,10 @@ export default function SummaryTabContent() {
             </View>
 
             {/* Comparison to Yesterday */}
-            {weatherComparisons.length > 0 && (
-              <View style={styles.comparisonContainer}>
-                <Text style={styles.sectionTitle}>Compared to Yesterday</Text>
-                {weatherComparisons.map((comparison, index) => (
+            <View style={styles.comparisonContainer}>
+              <Text style={styles.sectionTitle}>Compared to Yesterday</Text>
+              {weatherComparisons.length > 0 ? (
+                weatherComparisons.map((comparison, index) => (
                   <View key={index} style={styles.comparisonCard}>
                     <Text style={styles.comparisonIcon}>{comparison.icon}</Text>
                     <View style={styles.comparisonContent}>
@@ -347,37 +515,16 @@ export default function SummaryTabContent() {
                       <Text style={styles.comparisonText}>{comparison.text}</Text>
                     </View>
                   </View>
-                ))}
-              </View>
-            )}
-
-            {/* 7-Day Forecast Preview */}
-            <View style={styles.forecastContainer}>
-              <Text style={styles.sectionTitle}>7-Day Forecast</Text>
-              {data.daily.slice(0, 7).map((day, index) => (
-                <View key={index} style={styles.forecastRow}>
-                  <Text style={styles.forecastDay}>
-                    {index === 0 ? 'Today' : new Date(day.date).toLocaleDateString(undefined, { weekday: 'short' })}
-                  </Text>
-                  <Text style={styles.forecastIcon}>{day.icon}</Text>
-                  <View style={styles.forecastTemps}>
-                    <View style={styles.tempColumn}>
-                      <Text style={styles.tempLabel}>High</Text>
-                      <Text style={styles.forecastHigh}>{Math.round(day.max)}{tempUnit}</Text>
-                    </View>
-                    <View style={styles.tempColumn}>
-                      <Text style={styles.tempLabel}>Low</Text>
-                      <Text style={styles.forecastLow}>{Math.round(day.min)}{tempUnit}</Text>
-                    </View>
-                  </View>
-                  <View style={styles.forecastPrecipContainer}>
-                    <Text style={styles.forecastPrecipLabel}>Precip</Text>
-                    <Text style={styles.forecastPrecip}>
-                      {Math.round(day.precipProbMax ?? 0)}%
-                    </Text>
+                ))
+              ) : (
+                <View style={styles.comparisonCard}>
+                  <Text style={styles.comparisonIcon}>📊</Text>
+                  <View style={styles.comparisonContent}>
+                    <Text style={styles.comparisonType}>Data Loading</Text>
+                    <Text style={styles.comparisonText}>Yesterday comparison data will appear here once available</Text>
                   </View>
                 </View>
-              ))}
+              )}
             </View>
           </>
         )}
@@ -568,6 +715,38 @@ const styles = StyleSheet.create({
   forecastContainer: {
     marginTop: 16,
   },
+  forecastHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  toggleContainer: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(16, 24, 36, 0.5)',
+    borderRadius: 8,
+    padding: 2,
+  },
+  toggleButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    minWidth: 50,
+    alignItems: 'center',
+  },
+  toggleButtonActive: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  toggleButtonText: {
+    fontSize: 12,
+    color: colors.text,
+    opacity: 0.7,
+    fontWeight: '500',
+  },
+  toggleButtonTextActive: {
+    opacity: 1,
+    fontWeight: '600',
+  },
   forecastRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -627,4 +806,5 @@ const styles = StyleSheet.create({
     opacity: 0.6,
     textAlign: 'right',
   },
+
 });

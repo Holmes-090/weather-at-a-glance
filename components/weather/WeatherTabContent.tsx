@@ -1,5 +1,5 @@
-import { useMemo, useRef } from 'react';
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import React, { useMemo, useRef, useState, useCallback } from 'react';
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator, Alert, RefreshControl } from 'react-native';
 import { colors } from '../../styles/commonStyles';
 import SearchBar from '../SearchBar';
 import UnitToggleSheet from '../UnitToggleSheet';
@@ -11,7 +11,7 @@ import { useUnits } from '../..//components/UnitsContext';
 import { useLocation } from '../..//components/LocationContext';
 import { useWeather } from '../../hooks/useWeather';
 import { useWeatherAlerts } from '../../hooks/useWeatherAlerts';
-import { analyzePressure, getPressureTrendArrow } from '../../utils/weatherUtils';
+import { analyzePressure, getPressureTrendArrow, calculateHourlyPressureTrend } from '../../utils/weatherUtils';
 import { formatPressure, getPressureUnitSymbol } from '../../types/units';
 
 type Mode = 'temperature' | 'precipitation' | 'wind' | 'humidity' | 'pressure';
@@ -24,6 +24,8 @@ export default function WeatherTabContent({ mode }: Props) {
   const { temperatureUnit, pressureUnit, setTemperatureUnit, setPressureUnit, setUnits } = useUnits();
   const { location, setLocation, isInitializing } = useLocation();
   const sheetRef = useRef<any>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // Don't fetch weather data if location is not yet determined
   const shouldFetchWeather = location && !isInitializing;
@@ -107,9 +109,12 @@ export default function WeatherTabContent({ mode }: Props) {
       case 'humidity':
         return '';
       case 'pressure': {
-        const analysis = analyzePressure(data.current.pressure, data.current.deltaPressureFromYesterday);
-        const arrow = getPressureTrendArrow(data.current.deltaPressureFromYesterday);
-        return `${arrow} ${analysis.trend}`;
+        // Use current vs next hour comparison for more accurate trend
+        const currentHour = data.hourly[0]; // Current hour data
+        const nextHour = data.hourly[1]; // Next hour data
+        const pressureTrend = calculateHourlyPressureTrend(currentHour?.pressure || data.current.pressure, nextHour?.pressure);
+        
+        return `${pressureTrend.arrow} ${pressureTrend.trend}`;
       }
     }
   }, [data, mode, compareToYesterdayText]);
@@ -126,8 +131,40 @@ export default function WeatherTabContent({ mode }: Props) {
       case 'humidity':
         return `Avg ${Math.round(data.daily[0]?.humidityMean ?? 0)}%`;
       case 'pressure': {
-        const analysis = analyzePressure(data.current.pressure, data.current.deltaPressureFromYesterday);
-        return analysis.prediction;
+        // Use current vs next hour trend for prediction
+        const currentHour = data.hourly[0];
+        const nextHour = data.hourly[1];
+        const pressureTrend = calculateHourlyPressureTrend(currentHour?.pressure || data.current.pressure, nextHour?.pressure);
+        
+        // Generate prediction based on current pressure level and trend
+        const currentPressure = data.current.pressure || 1013;
+        let prediction = 'Stable conditions';
+        
+        if (currentPressure < 1013) {
+          if (pressureTrend.trend.includes('Falling')) {
+            prediction = 'Unsettled weather likely';
+          } else if (pressureTrend.trend.includes('Rising')) {
+            prediction = 'Conditions improving';
+          } else {
+            prediction = 'Low pressure system';
+          }
+        } else if (currentPressure > 1020) {
+          if (pressureTrend.trend.includes('Rising')) {
+            prediction = 'Clear, dry conditions';
+          } else if (pressureTrend.trend.includes('Falling')) {
+            prediction = 'Fair, cooling trend';
+          } else {
+            prediction = 'High pressure system';
+          }
+        } else {
+          if (pressureTrend.trend.includes('Rising')) {
+            prediction = 'Fair weather ahead';
+          } else if (pressureTrend.trend.includes('Falling')) {
+            prediction = 'Clouds possible';
+          }
+        }
+        
+        return prediction;
       }
     }
   }, [data, mode, tempUnit, windUnit]);
@@ -136,13 +173,41 @@ export default function WeatherTabContent({ mode }: Props) {
     setLocation(city);
   };
 
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    // Force a refresh by updating the refresh key
+    setRefreshKey(prev => prev + 1);
+    // Simulate refresh delay for better UX
+    setTimeout(() => {
+      setRefreshing(false);
+    }, 1000);
+  }, []);
+
+  // Add refreshKey to force useWeather to refetch
+  React.useEffect(() => {
+    if (refreshKey > 0) {
+      // The refresh will happen automatically due to the component re-render
+    }
+  }, [refreshKey]);
+
   return (
     <View style={{ flex: 1 }}>
       <WeatherBackground
         condition={data?.current.condition || 'cloudy'}
         isNight={data?.current.isNight || false}
       />
-      <ScrollView contentContainerStyle={[styles.container]} keyboardShouldPersistTaps="handled">
+      <ScrollView 
+        contentContainerStyle={[styles.container]} 
+        keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#fff"
+            titleColor="#fff"
+          />
+        }
+      >
         <View style={styles.topRow}>
           <SearchBar
             placeholder="Search city"

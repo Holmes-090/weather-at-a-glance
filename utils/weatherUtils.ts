@@ -106,6 +106,45 @@ export function getPressureTrendArrow(pressureDelta?: number | null): string {
   return pressureDelta > 0 ? '↗' : '↘'; // Rising or Falling
 }
 
+// Calculate pressure trend between current and next hour
+export function calculateHourlyPressureTrend(currentPressure?: number, nextPressure?: number): {
+  delta: number | null;
+  trend: string;
+  arrow: string;
+} {
+  if (!currentPressure || !nextPressure) {
+    return { delta: null, trend: 'Steady', arrow: '→' };
+  }
+  
+  const delta = nextPressure - currentPressure;
+  const deltaAbs = Math.abs(delta);
+  
+  let trend = 'Steady';
+  let arrow = '→';
+  
+  if (deltaAbs >= 1) {
+    // Significant pressure change (1+ hPa)
+    if (delta > 0) {
+      trend = 'Rising';
+      arrow = '↗';
+    } else {
+      trend = 'Falling';
+      arrow = '↘';
+    }
+  } else if (deltaAbs >= 0.3) {
+    // Moderate pressure change (0.3-1 hPa)
+    if (delta > 0) {
+      trend = 'Rising slowly';
+      arrow = '↗';
+    } else {
+      trend = 'Falling slowly';
+      arrow = '↘';
+    }
+  }
+  
+  return { delta, trend, arrow };
+}
+
 // UV Index utility functions
 export function getUVIndexDescription(uvIndex?: number): string {
   if (uvIndex === undefined || uvIndex === null || uvIndex < 0) return 'Unknown';

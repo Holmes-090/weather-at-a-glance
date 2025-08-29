@@ -6,7 +6,7 @@ import { colors } from '../../styles/commonStyles';
 import { HourForecast } from '../../types/weather';
 import CompassRose from './CompassRose';
 import HumidityBar from './HumidityBar';
-import { getPressureTrendArrow } from '../../utils/weatherUtils';
+import { getPressureTrendArrow, calculateHourlyPressureTrend } from '../../utils/weatherUtils';
 import { useUnits } from '../UnitsContext';
 import { formatPressure } from '../../types/units';
 
@@ -95,57 +95,63 @@ export default function HourlyStrip({ hours, unit, mode = 'temperature' }: Props
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.row}>
-          {hours.map((h) => (
-            <View key={h.time} style={styles.item}>
-              <Text style={styles.label}>{h.label}</Text>
-              
-              {/* Conditional icon rendering based on mode */}
-              <View style={styles.iconContainer}>
-                {mode === 'wind' ? (
-                  <CompassRose 
-                    windDirection={h.windDirection} 
-                    size={26} 
-                    color={colors.text} 
-                  />
-                ) : mode === 'humidity' ? (
-                  <HumidityBar 
-                    humidity={h.humidity} 
-                    width={12} 
-                    height={24}
-                    fillColor="#4A90E2"
-                    borderColor={colors.text}
-                  />
-                ) : (
-                  <Text style={styles.icon}>{weatherIcon(h.icon)}</Text>
+          {hours.map((h, index) => {
+            // Calculate pressure trend for this hour
+            const nextHour = hours[index + 1];
+            const pressureTrend = calculateHourlyPressureTrend(h.pressure, nextHour?.pressure);
+            
+            return (
+              <View key={h.time} style={styles.item}>
+                <Text style={styles.label}>{h.label}</Text>
+                
+                {/* Conditional icon rendering based on mode */}
+                <View style={styles.iconContainer}>
+                  {mode === 'wind' ? (
+                    <CompassRose 
+                      windDirection={h.windDirection} 
+                      size={26} 
+                      color={colors.text} 
+                    />
+                  ) : mode === 'humidity' ? (
+                    <HumidityBar 
+                      humidity={h.humidity} 
+                      width={12} 
+                      height={24}
+                      fillColor="#4A90E2"
+                      borderColor={colors.text}
+                    />
+                  ) : (
+                    <Text style={styles.icon}>{weatherIcon(h.icon)}</Text>
+                  )}
+                </View>
+                
+                {mode === 'temperature' && (
+                  <Text style={styles.valueText}>{Math.round(h.temperature)}{unit}</Text>
+                )}
+                {mode === 'precipitation' && (
+                  <View style={{ alignItems: 'center' }}>
+                    <Text style={styles.valueText}>{(h.precipitationMm ?? 0).toFixed(1)}mm</Text>
+                    <Text style={styles.subText}>{Math.round(h.precipitationProb ?? 0)}%</Text>
+                  </View>
+                )}
+                {mode === 'wind' && (
+                  <View style={{ alignItems: 'center' }}>
+                    <Text style={styles.valueText}>{Math.round(h.windSpeed ?? 0)}{unit}</Text>
+                    <Text style={styles.subText}>{degToCompass(h.windDirection)}</Text>
+                  </View>
+                )}
+                {mode === 'humidity' && (
+                  <Text style={styles.valueText}>{Math.round(h.humidity ?? 0)}%</Text>
+                )}
+                {mode === 'pressure' && (
+                  <View style={{ alignItems: 'center' }}>
+                    <Text style={styles.valueText}>{formatPressure(h.pressure ?? 1013, pressureUnit)}</Text>
+                    <Text style={styles.subText}>{pressureTrend.arrow}</Text>
+                  </View>
                 )}
               </View>
-              
-              {mode === 'temperature' && (
-                <Text style={styles.valueText}>{Math.round(h.temperature)}{unit}</Text>
-              )}
-              {mode === 'precipitation' && (
-                <View style={{ alignItems: 'center' }}>
-                  <Text style={styles.valueText}>{(h.precipitationMm ?? 0).toFixed(1)}mm</Text>
-                  <Text style={styles.subText}>{Math.round(h.precipitationProb ?? 0)}%</Text>
-                </View>
-              )}
-              {mode === 'wind' && (
-                <View style={{ alignItems: 'center' }}>
-                  <Text style={styles.valueText}>{Math.round(h.windSpeed ?? 0)}{unit}</Text>
-                  <Text style={styles.subText}>{degToCompass(h.windDirection)}</Text>
-                </View>
-              )}
-              {mode === 'humidity' && (
-                <Text style={styles.valueText}>{Math.round(h.humidity ?? 0)}%</Text>
-              )}
-              {mode === 'pressure' && (
-                <View style={{ alignItems: 'center' }}>
-                  <Text style={styles.valueText}>{formatPressure(h.pressure ?? 1013, pressureUnit)}</Text>
-                  <Text style={styles.subText}>{getPressureTrendArrow()}</Text>
-                </View>
-              )}
-            </View>
-          ))}
+            );
+          })}
         </View>
       </ScrollView>
     </View>
