@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState, useCallback } from 'react';
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator, Alert, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator, Alert, RefreshControl, TouchableOpacity } from 'react-native';
 import { colors } from '../../styles/commonStyles';
 import SearchBar from '../SearchBar';
 import UnitToggleSheet from '../UnitToggleSheet';
@@ -13,6 +13,9 @@ import { useWeather } from '../../hooks/useWeather';
 import { useWeatherAlerts } from '../../hooks/useWeatherAlerts';
 import { analyzePressure, getPressureTrendArrow, calculateHourlyPressureTrend, calculate3HourPressureTrend } from '../../utils/weatherUtils';
 import { formatPressure, getPressureUnitSymbol } from '../../types/units';
+import { useCurrentLocation } from '../../hooks/useCurrentLocation';
+import { reverseGeocode } from '../../hooks/useGeocoding';
+import Icon from '../Icon';
 
 type Mode = 'temperature' | 'precipitation' | 'wind' | 'humidity' | 'pressure';
 
@@ -38,6 +41,9 @@ export default function WeatherTabContent({ mode }: Props) {
     shouldFetchWeather ? location.latitude : 0,
     shouldFetchWeather ? location.longitude : 0
   );
+  
+  const currentLocation = useCurrentLocation();
+  const [locationLoading, setLocationLoading] = useState(false);
 
   if (error) {
     console.log('Weather error', error);
@@ -79,8 +85,8 @@ export default function WeatherTabContent({ mode }: Props) {
       case 'temperature':
         return `${Math.round(data.current.temperature)}${tempUnit}`;
       case 'precipitation': {
-        const mm = data.current.precipitationMm ?? 0;
-        return `${mm.toFixed(1)}mm`;
+        const prob = Math.round(data.current.precipitationProb ?? 0);
+        return `${prob}%`;
       }
       case 'wind': {
         const spd = Math.round(data.current.windSpeed ?? 0);
@@ -99,8 +105,8 @@ export default function WeatherTabContent({ mode }: Props) {
       case 'temperature':
         return compareToYesterdayText;
       case 'precipitation': {
-        const prob = Math.round(data.current.precipitationProb ?? 0);
-        return `${prob}% chance`;
+        const mm = data.current.precipitationMm ?? 0;
+        return `${mm.toFixed(1)}mm`;
       }
       case 'wind': {
         const dir = degToCompass(data.current.windDirection);
@@ -128,18 +134,56 @@ export default function WeatherTabContent({ mode }: Props) {
         return `Max ${Math.round(data.daily[0]?.windSpeedMax ?? 0)}${windUnit}`;
       case 'humidity':
         return `Avg ${Math.round(data.daily[0]?.humidityMean ?? 0)}%`;
-      case 'pressure': {
-        // Use 3-hour average trend for more stable prediction
-        const pressureTrend = calculate3HourPressureTrend(data.hourly);
-        
-        return pressureTrend.prediction;
-      }
+      case 'pressure':
+        return '';
     }
   }, [data, mode, tempUnit, windUnit]);
 
   const onCitySelected = (city: { name: string; latitude: number; longitude: number; country?: string }) => {
     setLocation(city);
   };
+
+  const handleCurrentLocation = useCallback(async () => {
+    if (!currentLocation.latitude || !currentLocation.longitude) {
+      Alert.alert(
+        'Location Error',
+        'Current location not available. Please ensure location permissions are enabled.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
+    setLocationLoading(true);
+    try {
+      // Use the already available coordinates from the hook
+      const geocoded = await reverseGeocode(currentLocation.latitude, currentLocation.longitude);
+      
+      if (geocoded) {
+        setLocation({
+          name: geocoded.name,
+          latitude: currentLocation.latitude,
+          longitude: currentLocation.longitude,
+          country: geocoded.country,
+        });
+      } else {
+        // Fallback to coordinates if reverse geocoding fails
+        setLocation({
+          name: `${currentLocation.latitude.toFixed(2)}, ${currentLocation.longitude.toFixed(2)}`,
+          latitude: currentLocation.latitude,
+          longitude: currentLocation.longitude,
+        });
+      }
+    } catch (error) {
+      console.log('Failed to get current location:', error);
+      Alert.alert(
+        'Location Error',
+        'Unable to determine location name. Please try again.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setLocationLoading(false);
+    }
+  }, [currentLocation.latitude, currentLocation.longitude, setLocation]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -181,6 +225,20 @@ export default function WeatherTabContent({ mode }: Props) {
             placeholder="Search city"
             onSelectCity={onCitySelected}
             onOptionsPress={() => sheetRef.current?.expand?.()}
+            locationButton={
+              <TouchableOpacity 
+                style={styles.currentLocationButton} 
+                onPress={handleCurrentLocation}
+                disabled={locationLoading || !currentLocation.latitude}
+                activeOpacity={0.7}
+              >
+                {locationLoading ? (
+                  <ActivityIndicator size="small" color={colors.text} />
+                ) : (
+                  <Icon name="location" size={18} color={colors.text} />
+                )}
+              </TouchableOpacity>
+            }
           />
         </View>
 
@@ -265,6 +323,14 @@ const styles = StyleSheet.create({
   },
   topRow: {
     width: '100%',
+  },
+  currentLocationButton: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 6,
+    paddingVertical: 6,
   },
   alertsContainer: {
     marginTop: 4,

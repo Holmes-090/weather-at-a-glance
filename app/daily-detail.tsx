@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, SafeAreaView, TouchableOpacity, Dimensions } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import Svg, { Path, Line, Text as SvgText, G } from 'react-native-svg';
+import Svg, { Path, Line, Text as SvgText, G, Rect, Circle } from 'react-native-svg';
 import { colors } from '../styles/commonStyles';
 import { DayForecast } from '../types/weather';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,6 +19,166 @@ function degToCompass(deg?: number) {
   const val = Math.floor((deg / 22.5) + 0.5);
   const arr = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
   return arr[val % 16];
+}
+
+// Custom SVG Chart Component for Daily Precipitation (Combined Bar + Line Chart)
+function DailyPrecipitationChart({ data, width, height }: {
+  data: { x: number; precipMm: number; precipChance: number; label: string }[];
+  width: number;
+  height: number;
+}) {
+  const padding = { left: 60, right: 20, top: 30, bottom: 40 };
+  const chartWidth = width - padding.left - padding.right;
+  const chartHeight = height - padding.top - padding.bottom;
+
+  // Find max precipitation amount for bar scaling (independent of chance scale)
+  const precipMmValues = data.map(d => d.precipMm);
+  const maxPrecipMm = Math.max(...precipMmValues, 0.1); // Minimum scale of 0.1mm
+  
+  // Bar width calculation
+  const barWidth = chartWidth / data.length * 0.6; // 60% of available space for bars
+  const barSpacing = chartWidth / data.length;
+
+  // Create bars for precipitation amount (mm) - scaled independently
+  const bars = data.map((point, index) => {
+    const x = padding.left + (index * barSpacing) + (barSpacing - barWidth) / 2;
+    const barHeight = maxPrecipMm > 0 ? (point.precipMm / maxPrecipMm) * (chartHeight * 0.6) : 0; // Use 60% of chart height for bars
+    const y = padding.top + chartHeight - barHeight;
+    return { x, y, width: barWidth, height: barHeight, precipMm: point.precipMm };
+  });
+
+  // Create path for precipitation chance line (%) - uses full chart height
+  const linePathData = data.map((point, index) => {
+    const x = padding.left + (index * barSpacing) + barSpacing / 2; // Center of bar
+    const y = padding.top + chartHeight - ((point.precipChance / 100) * chartHeight);
+    return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
+  }).join(' ');
+
+  // Y-axis labels for precipitation chance only
+  const chanceTicks = 5;
+  const chanceLabels = Array.from({ length: chanceTicks }, (_, i) => {
+    const value = (100 * i / (chanceTicks - 1));
+    return {
+      value: Math.round(value),
+      y: padding.top + chartHeight - (i / (chanceTicks - 1)) * chartHeight
+    };
+  });
+
+  return (
+    <Svg width={width} height={height}>
+      {/* Grid lines */}
+      {chanceLabels.map((label, i) => (
+        <Line
+          key={i}
+          x1={padding.left}
+          y1={label.y}
+          x2={padding.left + chartWidth}
+          y2={label.y}
+          stroke="rgba(255,255,255,0.1)"
+          strokeWidth="1"
+        />
+      ))}
+
+      {/* Precipitation amount bars (blue) */}
+      {bars.map((bar, index) => (
+        <G key={index}>
+          <Rect
+            x={bar.x}
+            y={bar.y}
+            width={bar.width}
+            height={bar.height}
+            fill="#4A90E2"
+            opacity={0.7}
+          />
+          {/* Precipitation amount labels above bars */}
+          {bar.precipMm > 0 && (
+            <SvgText
+              x={bar.x + bar.width / 2}
+              y={Math.max(bar.y - 8, padding.top + 15)} // Consistent spacing, min distance from top
+              fontSize="11"
+              fill="rgba(255,255,255,0.95)"
+              textAnchor="middle"
+              fontWeight="700"
+              stroke="rgba(0,0,0,0.3)"
+              strokeWidth="0.5"
+            >
+              {bar.precipMm.toFixed(1)}
+            </SvgText>
+          )}
+        </G>
+      ))}
+
+      {/* Precipitation chance line */}
+      <Path
+        d={linePathData}
+        stroke="#FFA500"
+        strokeWidth="3"
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+
+      {/* Line data points */}
+      {data.map((point, index) => {
+        const x = padding.left + (index * barSpacing) + barSpacing / 2;
+        const y = padding.top + chartHeight - ((point.precipChance / 100) * chartHeight);
+        return (
+          <Circle
+            key={index}
+            cx={x}
+            cy={y}
+            r="4"
+            fill="#FFA500"
+            stroke="#fff"
+            strokeWidth="2"
+          />
+        );
+      })}
+
+      {/* Y-axis labels (precipitation chance only) */}
+      {chanceLabels.map((label, i) => (
+        <SvgText
+          key={i}
+          x={padding.left - 10}
+          y={label.y + 4}
+          fontSize="12"
+          fill="rgba(255,255,255,0.8)"
+          textAnchor="end"
+        >
+          {label.value}%
+        </SvgText>
+      ))}
+
+      {/* X-axis labels */}
+      {data.map((point, index) => {
+        const x = padding.left + (index * barSpacing) + barSpacing / 2;
+        return (
+          <SvgText
+            key={index}
+            x={x}
+            y={height - 10}
+            fontSize="10"
+            fill="rgba(255,255,255,0.6)"
+            textAnchor="middle"
+          >
+            {point.label}
+          </SvgText>
+        );
+      })}
+
+      {/* Y-axis title */}
+      <SvgText
+        x={20}
+        y={height / 2}
+        fontSize="12"
+        fill="rgba(255,255,255,0.8)"
+        textAnchor="middle"
+        transform={`rotate(-90 20 ${height / 2})`}
+      >
+        Chance (%)
+      </SvgText>
+    </Svg>
+  );
 }
 
 // Custom SVG Chart Component for Daily Data
@@ -309,6 +469,18 @@ export default function DailyDetailScreen() {
     return data;
   }, [dailyData, mode]);
 
+  // Prepare precipitation-specific chart data
+  const dailyPrecipitationData = useMemo(() => {
+    if (mode !== 'precipitation') return [];
+    
+    return dailyData.map((day, index) => ({
+      x: index,
+      precipMm: day.precipSumMm || 0,
+      precipChance: day.precipProbMax || 0,
+      label: day.label,
+    }));
+  }, [dailyData, mode]);
+
   // Get title and unit info
   const getTitle = () => {
     switch (mode) {
@@ -366,15 +538,37 @@ export default function DailyDetailScreen() {
               </View>
             </View>
           )}
+
+          {/* Legend for precipitation mode */}
+          {mode === 'precipitation' && (
+            <View style={styles.legend}>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendLine, { backgroundColor: '#4A90E2' }]} />
+                <Text style={styles.legendText}>Precipitation (mm)</Text>
+              </View>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendLine, { backgroundColor: '#FFA500' }]} />
+                <Text style={styles.legendText}>Precipitation chance</Text>
+              </View>
+            </View>
+          )}
           
           <View style={styles.chartContainer}>
-            <DailyLineChart
-              data={chartData}
-              width={chartWidth}
-              height={280}
-              mode={mode}
-              unit={getYAxisLabel()}
-            />
+            {mode === 'precipitation' ? (
+              <DailyPrecipitationChart
+                data={dailyPrecipitationData}
+                width={chartWidth}
+                height={280}
+              />
+            ) : (
+              <DailyLineChart
+                data={chartData}
+                width={chartWidth}
+                height={280}
+                mode={mode}
+                unit={getYAxisLabel()}
+              />
+            )}
           </View>
         </View>
 

@@ -1,5 +1,5 @@
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, ReactNode } from 'react';
 import { View, TextInput, StyleSheet, Text, TouchableOpacity, ScrollView, Keyboard, Platform } from 'react-native';
 import { colors } from '../styles/commonStyles';
 import Icon from './Icon';
@@ -9,9 +9,10 @@ interface Props {
   placeholder?: string;
   onSelectCity: (city: { name: string; latitude: number; longitude: number; country?: string }) => void;
   onOptionsPress: () => void;
+  locationButton?: ReactNode;
 }
 
-export default function SearchBar({ placeholder = 'Search', onSelectCity, onOptionsPress }: Props) {
+export default function SearchBar({ placeholder = 'Search', onSelectCity, onOptionsPress, locationButton }: Props) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<GeocodeResult[]>([]);
   const [open, setOpen] = useState(false);
@@ -112,6 +113,11 @@ export default function SearchBar({ placeholder = 'Search', onSelectCity, onOpti
             <Icon name="close-circle" size={16} color={colors.text} />
           </TouchableOpacity>
         )}
+        {locationButton && (
+          <View style={styles.locationButtonContainer}>
+            {locationButton}
+          </View>
+        )}
         <TouchableOpacity onPress={onOptionsPress} style={styles.optionsButton} activeOpacity={0.8}>
           <Icon name="options" size={20} color={colors.text} />
         </TouchableOpacity>
@@ -154,6 +160,9 @@ const styles = StyleSheet.create({
   clearButton: {
     paddingHorizontal: 6,
     paddingVertical: 6,
+  },
+  locationButtonContainer: {
+    paddingHorizontal: 4,
   },
   optionsButton: {
     paddingLeft: 10,
