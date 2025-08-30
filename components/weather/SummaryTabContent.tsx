@@ -9,7 +9,7 @@ import { useUnits } from '../UnitsContext';
 import { useLocation } from '../LocationContext';
 import { useWeather } from '../../hooks/useWeather';
 import { useWeatherAlerts } from '../../hooks/useWeatherAlerts';
-import { analyzePressure, formatUVIndex, formatUVIndexValue, getUVIndexDescription, convertVisibility, formatDewPoint, formatAirQualityValue, getAirQualityDescription, calculateHourlyPressureTrend } from '../../utils/weatherUtils';
+import { analyzePressure, formatUVIndex, formatUVIndexValue, getUVIndexDescription, convertVisibility, formatDewPoint, formatAirQualityValue, getAirQualityDescription, calculateHourlyPressureTrend, calculate3HourPressureTrend } from '../../utils/weatherUtils';
 import { formatPressure } from '../../types/units';
 
 export default function SummaryTabContent() {
@@ -47,46 +47,16 @@ export default function SummaryTabContent() {
 
 
 
-  // Pressure analysis - use current vs next hour trend like pressure tab
+  // Pressure analysis - use 3-hour average trend for more stable predictions
   const pressureAnalysis = useMemo(() => {
     if (!data?.current.pressure) return null;
     
-    // Use current vs next hour comparison for more accurate trend
-    const currentHour = data.hourly?.[0]; // Current hour data
-    const nextHour = data.hourly?.[1]; // Next hour data
-    const pressureTrend = calculateHourlyPressureTrend(currentHour?.pressure || data.current.pressure, nextHour?.pressure);
-    
-    // Generate prediction based on current pressure level and trend
-    const currentPressure = data.current.pressure || 1013;
-    let prediction = 'Stable conditions';
-    
-    if (currentPressure < 1013) {
-      if (pressureTrend.trend.includes('Falling')) {
-        prediction = 'Unsettled weather likely';
-      } else if (pressureTrend.trend.includes('Rising')) {
-        prediction = 'Conditions improving';
-      } else {
-        prediction = 'Low pressure system';
-      }
-    } else if (currentPressure > 1020) {
-      if (pressureTrend.trend.includes('Rising')) {
-        prediction = 'Clear, dry conditions';
-      } else if (pressureTrend.trend.includes('Falling')) {
-        prediction = 'Fair, cooling trend';
-      } else {
-        prediction = 'High pressure system';
-      }
-    } else {
-      if (pressureTrend.trend.includes('Rising')) {
-        prediction = 'Fair weather ahead';
-      } else if (pressureTrend.trend.includes('Falling')) {
-        prediction = 'Clouds possible';
-      }
-    }
+    // Use 3-hour average trend for more stable predictions
+    const pressureTrend = calculate3HourPressureTrend(data.hourly);
     
     return { 
       trend: pressureTrend.trend, 
-      prediction: prediction,
+      prediction: pressureTrend.prediction,
       arrow: pressureTrend.arrow
     };
   }, [data]);

@@ -106,7 +106,7 @@ export function getPressureTrendArrow(pressureDelta?: number | null): string {
   return pressureDelta > 0 ? '↗' : '↘'; // Rising or Falling
 }
 
-// Calculate pressure trend between current and next hour
+// Calculate pressure trend between current and next hour (legacy function)
 export function calculateHourlyPressureTrend(currentPressure?: number, nextPressure?: number): {
   delta: number | null;
   trend: string;
@@ -143,6 +143,73 @@ export function calculateHourlyPressureTrend(currentPressure?: number, nextPress
   }
   
   return { delta, trend, arrow };
+}
+
+// Calculate pressure trend over the next 3 hours using average change
+export function calculate3HourPressureTrend(hourlyData: Array<{ pressure?: number }>): {
+  averageDelta: number | null;
+  trend: string;
+  arrow: string;
+  prediction: string;
+} {
+  if (!hourlyData || hourlyData.length < 4) {
+    return { 
+      averageDelta: null, 
+      trend: 'Stable, consistent weather', 
+      arrow: '→',
+      prediction: 'Stable, consistent weather'
+    };
+  }
+  
+  const currentPressure = hourlyData[0]?.pressure;
+  if (!currentPressure) {
+    return { 
+      averageDelta: null, 
+      trend: 'Stable, consistent weather', 
+      arrow: '→',
+      prediction: 'Stable, consistent weather'
+    };
+  }
+  
+  // Calculate pressure changes for the next 3 hours
+  const pressureChanges: number[] = [];
+  for (let i = 1; i <= 3 && i < hourlyData.length; i++) {
+    const futurePressure = hourlyData[i]?.pressure;
+    if (futurePressure) {
+      pressureChanges.push(futurePressure - currentPressure);
+    }
+  }
+  
+  if (pressureChanges.length === 0) {
+    return { 
+      averageDelta: null, 
+      trend: 'Stable, consistent weather', 
+      arrow: '→',
+      prediction: 'Stable, consistent weather'
+    };
+  }
+  
+  // Calculate average pressure change
+  const averageDelta = pressureChanges.reduce((sum, change) => sum + change, 0) / pressureChanges.length;
+  
+  let trend = 'Stable, consistent weather';
+  let arrow = '→';
+  let prediction = 'Stable, consistent weather';
+  
+  if (averageDelta > 1) {
+    // Average pressure rising more than 1 hPa
+    trend = 'Improving conditions';
+    arrow = '↗';
+    prediction = 'Improving conditions';
+  } else if (averageDelta < -1) {
+    // Average pressure falling more than 1 hPa
+    trend = 'Unsettled weather likely';
+    arrow = '↘';
+    prediction = 'Unsettled weather likely';
+  }
+  // If between -1 and +1 hPa, keep "Similar conditions"
+  
+  return { averageDelta, trend, arrow, prediction };
 }
 
 // UV Index utility functions

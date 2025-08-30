@@ -11,7 +11,7 @@ import { useUnits } from '../..//components/UnitsContext';
 import { useLocation } from '../..//components/LocationContext';
 import { useWeather } from '../../hooks/useWeather';
 import { useWeatherAlerts } from '../../hooks/useWeatherAlerts';
-import { analyzePressure, getPressureTrendArrow, calculateHourlyPressureTrend } from '../../utils/weatherUtils';
+import { analyzePressure, getPressureTrendArrow, calculateHourlyPressureTrend, calculate3HourPressureTrend } from '../../utils/weatherUtils';
 import { formatPressure, getPressureUnitSymbol } from '../../types/units';
 
 type Mode = 'temperature' | 'precipitation' | 'wind' | 'humidity' | 'pressure';
@@ -109,10 +109,8 @@ export default function WeatherTabContent({ mode }: Props) {
       case 'humidity':
         return '';
       case 'pressure': {
-        // Use current vs next hour comparison for more accurate trend
-        const currentHour = data.hourly[0]; // Current hour data
-        const nextHour = data.hourly[1]; // Next hour data
-        const pressureTrend = calculateHourlyPressureTrend(currentHour?.pressure || data.current.pressure, nextHour?.pressure);
+        // Use 3-hour average trend for more stable predictions
+        const pressureTrend = calculate3HourPressureTrend(data.hourly);
         
         return `${pressureTrend.arrow} ${pressureTrend.trend}`;
       }
@@ -131,40 +129,10 @@ export default function WeatherTabContent({ mode }: Props) {
       case 'humidity':
         return `Avg ${Math.round(data.daily[0]?.humidityMean ?? 0)}%`;
       case 'pressure': {
-        // Use current vs next hour trend for prediction
-        const currentHour = data.hourly[0];
-        const nextHour = data.hourly[1];
-        const pressureTrend = calculateHourlyPressureTrend(currentHour?.pressure || data.current.pressure, nextHour?.pressure);
+        // Use 3-hour average trend for more stable prediction
+        const pressureTrend = calculate3HourPressureTrend(data.hourly);
         
-        // Generate prediction based on current pressure level and trend
-        const currentPressure = data.current.pressure || 1013;
-        let prediction = 'Stable conditions';
-        
-        if (currentPressure < 1013) {
-          if (pressureTrend.trend.includes('Falling')) {
-            prediction = 'Unsettled weather likely';
-          } else if (pressureTrend.trend.includes('Rising')) {
-            prediction = 'Conditions improving';
-          } else {
-            prediction = 'Low pressure system';
-          }
-        } else if (currentPressure > 1020) {
-          if (pressureTrend.trend.includes('Rising')) {
-            prediction = 'Clear, dry conditions';
-          } else if (pressureTrend.trend.includes('Falling')) {
-            prediction = 'Fair, cooling trend';
-          } else {
-            prediction = 'High pressure system';
-          }
-        } else {
-          if (pressureTrend.trend.includes('Rising')) {
-            prediction = 'Fair weather ahead';
-          } else if (pressureTrend.trend.includes('Falling')) {
-            prediction = 'Clouds possible';
-          }
-        }
-        
-        return prediction;
+        return pressureTrend.prediction;
       }
     }
   }, [data, mode, tempUnit, windUnit]);
