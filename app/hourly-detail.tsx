@@ -81,31 +81,15 @@ function PrecipitationChart({ data, width, height }: {
 
       {/* Precipitation amount bars (blue) */}
       {bars.map((bar, index) => (
-        <G key={index}>
-          <Rect
-            x={bar.x}
-            y={bar.y}
-            width={bar.width}
-            height={bar.height}
-            fill="#4A90E2"
-            opacity={0.7}
-          />
-          {/* Precipitation amount labels above bars */}
-          {bar.precipMm > 0 && (
-            <SvgText
-              x={bar.x + bar.width / 2}
-              y={Math.max(bar.y - 8, padding.top + 15)} // Consistent spacing, min distance from top
-              fontSize="11"
-              fill="rgba(255,255,255,0.95)"
-              textAnchor="middle"
-              fontWeight="700"
-              stroke="rgba(0,0,0,0.3)"
-              strokeWidth="0.5"
-            >
-              {bar.precipMm.toFixed(1)}
-            </SvgText>
-          )}
-        </G>
+        <Rect
+          key={index}
+          x={bar.x}
+          y={bar.y}
+          width={bar.width}
+          height={bar.height}
+          fill="#4A90E2"
+          opacity={0.7}
+        />
       ))}
 
       {/* Precipitation chance line */}
@@ -135,6 +119,25 @@ function PrecipitationChart({ data, width, height }: {
           />
         );
       })}
+
+      {/* Precipitation amount labels above bars - rendered last to be on top */}
+      {bars.map((bar, index) => (
+        bar.precipMm > 0 && (
+          <SvgText
+            key={index}
+            x={bar.x + bar.width / 2}
+            y={Math.max(bar.y - 8, padding.top + 15)} // Consistent spacing, min distance from top
+            fontSize="11"
+            fill="rgba(255,255,255,0.95)"
+            textAnchor="middle"
+            fontWeight="700"
+            stroke="rgba(0,0,0,0.3)"
+            strokeWidth="0.5"
+          >
+            {bar.precipMm.toFixed(1)}
+          </SvgText>
+        )
+      ))}
 
       {/* Y-axis labels (precipitation chance only) */}
       {chanceLabels.map((label, i) => (
