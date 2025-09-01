@@ -44,12 +44,20 @@ export function useWeather(lat: number, lon: number, units: 'metric' | 'imperial
         const currentTemp = json.current_weather?.temperature ?? null;
         const currentCode = json.current_weather?.weathercode ?? 0;
 
-        // Is night?
+        // Is night? Use proper timezone-aware comparison
         const nowIso = json.current_weather?.time || json.hourly?.time?.[0];
+        
+        // Parse times - Open-Meteo returns times in local timezone when timezone=auto is used
         const nowDate = new Date(nowIso);
         const sunriseToday = new Date(json.daily.sunrise[0]);
         const sunsetToday = new Date(json.daily.sunset[0]);
-        const night = isNightLocal(nowDate, sunriseToday, sunsetToday);
+        
+        // For accurate comparison, use hours and minutes only (ignore date part)
+        const nowHour = nowDate.getHours() + nowDate.getMinutes() / 60;
+        const sunriseHour = sunriseToday.getHours() + sunriseToday.getMinutes() / 60;
+        const sunsetHour = sunsetToday.getHours() + sunsetToday.getMinutes() / 60;
+        
+        const night = nowHour < sunriseHour || nowHour > sunsetHour;
 
         // Hourly mapping
         const hourlyTimes: string[] = json.hourly.time;

@@ -83,10 +83,63 @@ function useTwinklingStars(enabled: boolean) {
   return stars;
 }
 
+function useFloatingClouds(enabled: boolean) {
+  const count = 3;
+  const clouds = useRef(
+    [...Array(count)].map(() => ({
+      x: new Animated.Value(-100 - Math.random() * 200),
+      y: Math.random() * (height * 0.4),
+      size: 60 + Math.random() * 40,
+      speed: 25000 + Math.random() * 15000,
+      delay: Math.random() * 8000,
+      opacity: 0.15 + Math.random() * 0.25,
+    }))
+  ).current;
+
+  useEffect(() => {
+    if (!enabled) return;
+    const loops = clouds.map(c =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.delay(c.delay),
+          Animated.timing(c.x, {
+            toValue: width + 100,
+            duration: c.speed,
+            easing: Easing.linear,
+            useNativeDriver: true,
+          }),
+          Animated.timing(c.x, {
+            toValue: -100 - c.size,
+            duration: 0,
+            useNativeDriver: true,
+          }),
+        ])
+      )
+    );
+    loops.forEach(l => l.start());
+    return () => loops.forEach(l => l.stop());
+  }, [enabled]);
+
+  return clouds;
+}
+
 export default function WeatherBackground({ condition, isNight }: Props) {
   const gradient = useMemo(() => {
     if (isNight) {
-      return ['#0B1020', '#0A1020', '#0A0F1A'];
+      switch (condition) {
+        case 'rain':
+          return ['#1F2937', '#111827', '#0B0F1A']; // Darker stormy night
+        case 'snow':
+          return ['#374151', '#1F2937', '#111827']; // Lighter snowy night
+        case 'storm':
+          return ['#0F172A', '#0B0F1A', '#000000']; // Very dark stormy night
+        case 'cloudy':
+          return ['#1E293B', '#0F172A', '#0B0F1A']; // Cloudy night
+        case 'clear-night':
+        case 'night':
+        default:
+          return ['#0B1020', '#0A1020', '#0A0F1A']; // Clear night
+      }
     }
     switch (condition) {
       case 'sunny':
@@ -104,15 +157,17 @@ export default function WeatherBackground({ condition, isNight }: Props) {
     }
   }, [condition, isNight]);
 
-  const rain = useFallingParticles(condition === 'rain' && !isNight, 'rain');
+  const rain = useFallingParticles(condition === 'rain', 'rain'); // Show rain both day and night
+  const stormRain = useFallingParticles(condition === 'storm', 'rain'); // Heavy rain for storms
   const snow = useFallingParticles(condition === 'snow', 'snow');
   const stars = useTwinklingStars(isNight && (condition === 'clear-night' || condition === 'night' || condition === 'sunny'));
+  const clouds = useFloatingClouds(condition === 'cloudy' || condition === 'rain' || condition === 'storm');
 
   return (
     <View style={StyleSheet.absoluteFill}>
       <LinearGradient colors={gradient} style={StyleSheet.absoluteFill} />
       {/* Rain */}
-      {condition === 'rain' && !isNight && rain.map((p, idx) => (
+      {condition === 'rain' && rain.map((p, idx) => (
         <Animated.View
           key={`rain-${idx}`}
           style={{
@@ -120,7 +175,22 @@ export default function WeatherBackground({ condition, isNight }: Props) {
             transform: [{ translateY: p.y }, { translateX: p.x }],
             width: 1.5,
             height: 14,
-            backgroundColor: 'rgba(255,255,255,0.45)',
+            backgroundColor: isNight ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.45)',
+            borderRadius: 1,
+          }}
+          pointerEvents="none"
+        />
+      ))}
+      {/* Storm Rain (heavier) */}
+      {condition === 'storm' && stormRain.map((p, idx) => (
+        <Animated.View
+          key={`storm-rain-${idx}`}
+          style={{
+            position: 'absolute',
+            transform: [{ translateY: p.y }, { translateX: p.x }],
+            width: 2,
+            height: 18,
+            backgroundColor: isNight ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.6)',
             borderRadius: 1,
           }}
           pointerEvents="none"
@@ -155,6 +225,23 @@ export default function WeatherBackground({ condition, isNight }: Props) {
             backgroundColor: 'white',
             borderRadius: 6,
             opacity: s.opacity,
+          }}
+          pointerEvents="none"
+        />
+      ))}
+      {/* Floating Clouds */}
+      {(condition === 'cloudy' || condition === 'rain' || condition === 'storm') && clouds.map((c, idx) => (
+        <Animated.View
+          key={`cloud-${idx}`}
+          style={{
+            position: 'absolute',
+            transform: [{ translateX: c.x }],
+            top: c.y,
+            width: c.size,
+            height: c.size * 0.6,
+            backgroundColor: isNight ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.2)',
+            borderRadius: c.size * 0.3,
+            opacity: c.opacity,
           }}
           pointerEvents="none"
         />

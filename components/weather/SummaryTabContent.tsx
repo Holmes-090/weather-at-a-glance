@@ -14,9 +14,10 @@ import { formatPressure } from '../../types/units';
 import { useCurrentLocation } from '../../hooks/useCurrentLocation';
 import { reverseGeocode } from '../../hooks/useGeocoding';
 import Icon from '../Icon';
+import LocalTime from '../LocalTime';
 
 export default function SummaryTabContent() {
-  const { temperatureUnit, pressureUnit, setTemperatureUnit, setPressureUnit, setUnits } = useUnits();
+  const { temperatureUnit, pressureUnit, timeFormat, setTemperatureUnit, setPressureUnit, setTimeFormat, setUnits } = useUnits();
   const { location, setLocation, isInitializing } = useLocation();
   const sheetRef = useRef<any>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -271,9 +272,15 @@ export default function SummaryTabContent() {
         {/* Current Weather Summary Card */}
         <View style={styles.currentCard}>
           {location && (
-            <Text style={styles.cityName}>
-              {location.name}{location.country ? `, ${location.country}` : ''}
-            </Text>
+            <>
+              <Text style={styles.cityName}>
+                {location.name}{location.country ? `, ${location.country}` : ''}
+              </Text>
+              <LocalTime 
+                timezone={data?.timezone} 
+                style={styles.localTime}
+              />
+            </>
           )}
           {(loading || isInitializing || !location) ? (
             <ActivityIndicator color="#fff" size="large" />
@@ -563,8 +570,10 @@ export default function SummaryTabContent() {
         ref={sheetRef} 
         temperatureUnit={temperatureUnit}
         pressureUnit={pressureUnit}
+        timeFormat={timeFormat}
         onTemperatureChange={setTemperatureUnit}
         onPressureChange={setPressureUnit}
+        onTimeFormatChange={setTimeFormat}
         value={temperatureUnit} 
         onChange={setUnits} 
       />
@@ -613,6 +622,13 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontWeight: '700',
     textAlign: 'center',
+  },
+  localTime: {
+    fontSize: 14,
+    color: colors.text,
+    opacity: 0.8,
+    textAlign: 'center',
+    marginTop: 4,
   },
   iconAndDesc: {
     alignItems: 'center',

@@ -24,7 +24,7 @@ interface Props {
 }
 
 export default function WeatherTabContent({ mode }: Props) {
-  const { temperatureUnit, pressureUnit, setTemperatureUnit, setPressureUnit, setUnits } = useUnits();
+  const { temperatureUnit, pressureUnit, timeFormat, setTemperatureUnit, setPressureUnit, setTimeFormat, setUnits } = useUnits();
   const { location, setLocation, isInitializing } = useLocation();
   const sheetRef = useRef<any>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -299,8 +299,10 @@ export default function WeatherTabContent({ mode }: Props) {
         ref={sheetRef} 
         temperatureUnit={temperatureUnit}
         pressureUnit={pressureUnit}
+        timeFormat={timeFormat}
         onTemperatureChange={setTemperatureUnit}
         onPressureChange={setPressureUnit}
+        onTimeFormatChange={setTimeFormat}
         value={temperatureUnit} 
         onChange={setUnits} 
       />

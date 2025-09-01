@@ -4,14 +4,17 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import BottomSheet, { BottomSheetView } from '@gorhom/bottom-sheet';
 import { colors } from '../styles/commonStyles';
 import type { TemperatureUnit, PressureUnit } from '../types/units';
+import type { TimeFormat } from './UnitsContext';
 
 export type UnitType = TemperatureUnit; // Legacy export
 
 interface Props {
   temperatureUnit: TemperatureUnit;
   pressureUnit: PressureUnit;
+  timeFormat: TimeFormat;
   onTemperatureChange: (unit: TemperatureUnit) => void;
   onPressureChange: (unit: PressureUnit) => void;
+  onTimeFormatChange: (format: TimeFormat) => void;
   // Legacy support
   value?: UnitType;
   onChange?: (v: UnitType) => void;
@@ -19,19 +22,23 @@ interface Props {
 
 const UnitToggleSheet = forwardRef<BottomSheet, Props>(({ 
   temperatureUnit, 
-  pressureUnit, 
+  pressureUnit,
+  timeFormat,
   onTemperatureChange, 
   onPressureChange,
+  onTimeFormatChange,
   value, // Legacy
   onChange // Legacy
 }, ref) => {
-  const snapPoints = useMemo(() => ['40%'], []); // Increased height for pressure units
+  const snapPoints = useMemo(() => ['50%'], []); // Increased height for time format
 
   // Use new props or fall back to legacy props
   const currentTempUnit = temperatureUnit || value || 'metric';
   const currentPressureUnit = pressureUnit || 'hPa';
+  const currentTimeFormat = timeFormat || '12h';
   const handleTempChange = onTemperatureChange || onChange || (() => {});
   const handlePressureChange = onPressureChange || (() => {});
+  const handleTimeFormatChange = onTimeFormatChange || (() => {});
 
   return (
     <BottomSheet
@@ -87,6 +94,25 @@ const UnitToggleSheet = forwardRef<BottomSheet, Props>(({
             activeOpacity={0.8}
           >
             <Text style={[styles.segmentText, currentPressureUnit === 'kPa' && styles.segmentTextActive]}>kPa</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Time Format */}
+        <Text style={styles.sectionTitle}>Time Format</Text>
+        <View style={styles.segment}>
+          <TouchableOpacity
+            style={[styles.segmentItem, currentTimeFormat === '12h' && styles.segmentItemActive]}
+            onPress={() => handleTimeFormatChange('12h')}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.segmentText, currentTimeFormat === '12h' && styles.segmentTextActive]}>12-hour (AM/PM)</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.segmentItem, currentTimeFormat === '24h' && styles.segmentItemActive]}
+            onPress={() => handleTimeFormatChange('24h')}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.segmentText, currentTimeFormat === '24h' && styles.segmentTextActive]}>24-hour</Text>
           </TouchableOpacity>
         </View>
       </BottomSheetView>
