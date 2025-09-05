@@ -6,8 +6,8 @@ A React Native weather app built with Expo that automatically detects your locat
 
 - 🌍 **Automatic location detection** - Get weather for your current location instantly
 - 🌐 **Real-time weather data** - Current conditions, hourly forecasts, and 7-day outlook with comparisons to yesterday
-- 📊 **Multiple weather metrics** - Temperature, precipitation, wind speed, humidity, and atmospheric pressure
-  Displays current UV index, air quality, dew point, visability, and cloud cover
+- 📊 **Multiple weather metrics** - Temperature, precipitation, wind speed, humidity, and atmospheric pressure and current
+       UV index, air quality, dew point, visability, and cloud cover
 - 🔒 **Privacy-first** - Location data stays on your device
 - 🎨 **Beautiful UI** - Modern design with weather-appropriate backgrounds
 - ⚡ **Fast & responsive** - Built with React Native and Expo
