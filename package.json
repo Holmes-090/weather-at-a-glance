@@ -4,6 +4,7 @@
   "main": "expo-router/entry",
   "scripts": {
     "dev": "EXPO_NO_TELEMETRY=1 expo start --tunnel",
+<<<<<<< HEAD
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "EXPO_NO_TELEMETRY=1 expo start --web",
@@ -11,6 +12,14 @@
     "build:android": "expo prebuild -p android",
     "lint": "eslint .",
     "start": "expo start --dev-client"
+=======
+    "android": "EXPO_NO_TELEMETRY=1 expo start --android",
+    "ios": "EXPO_NO_TELEMETRY=1 expo start --ios",
+    "web": "EXPO_NO_TELEMETRY=1 expo start --web",
+    "build:web": "expo export -p web && npx workbox generateSW workbox-config.js",
+    "build:android": "expo prebuild -p android",
+    "lint": "eslint ."
+>>>>>>> f306dcecce0b09ac3714b04dae7e12787b4c93ff
   },
   "dependencies": {
     "@babel/runtime": "^7.26.9",
@@ -47,7 +56,11 @@
     "expo-web-browser": "^14.1.6",
     "react": "19.0.0",
     "react-dom": "19.0.0",
+<<<<<<< HEAD
     "react-native": "0.79.6",
+=======
+    "react-native": "0.79.5",
+>>>>>>> f306dcecce0b09ac3714b04dae7e12787b4c93ff
     "react-native-css-interop": "^0.1.22",
     "react-native-gesture-handler": "~2.24.0",
     "react-native-maps": "1.20.1",
@@ -83,4 +96,8 @@
     "@expo/prebuild-config": "latest"
   },
   "private": true
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> f306dcecce0b09ac3714b04dae7e12787b4c93ff

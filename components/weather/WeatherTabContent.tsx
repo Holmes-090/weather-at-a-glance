@@ -35,6 +35,7 @@ export default function WeatherTabContent({ mode }: Props) {
   const { data, loading, error } = useWeather(
     shouldFetchWeather ? location.latitude : 0,
     shouldFetchWeather ? location.longitude : 0,
+<<<<<<< HEAD
     temperatureUnit,
     refreshKey
   );
@@ -42,6 +43,13 @@ export default function WeatherTabContent({ mode }: Props) {
     shouldFetchWeather ? location.latitude : 0,
     shouldFetchWeather ? location.longitude : 0,
     refreshKey
+=======
+    temperatureUnit
+  );
+  const { alerts, dismissAlert } = useWeatherAlerts(
+    shouldFetchWeather ? location.latitude : 0,
+    shouldFetchWeather ? location.longitude : 0
+>>>>>>> f306dcecce0b09ac3714b04dae7e12787b4c93ff
   );
   
   const currentLocation = useCurrentLocation();
@@ -191,6 +199,7 @@ export default function WeatherTabContent({ mode }: Props) {
     setRefreshing(true);
     // Force a refresh by updating the refresh key
     setRefreshKey(prev => prev + 1);
+<<<<<<< HEAD
     
     // Wait a bit longer to ensure data is refreshed
     setTimeout(() => {
@@ -198,6 +207,21 @@ export default function WeatherTabContent({ mode }: Props) {
     }, 2000);
   }, []);
 
+=======
+    // Simulate refresh delay for better UX
+    setTimeout(() => {
+      setRefreshing(false);
+    }, 1000);
+  }, []);
+
+  // Add refreshKey to force useWeather to refetch
+  React.useEffect(() => {
+    if (refreshKey > 0) {
+      // The refresh will happen automatically due to the component re-render
+    }
+  }, [refreshKey]);
+
+>>>>>>> f306dcecce0b09ac3714b04dae7e12787b4c93ff
   return (
     <View style={{ flex: 1 }}>
       <WeatherBackground

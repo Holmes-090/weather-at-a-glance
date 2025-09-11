@@ -3,7 +3,11 @@ import { useEffect, useState } from 'react';
 import { mapWeatherCodeToIcon, mapWeatherCodeToCondition, formatHourLabel, formatDayLabel, isNightLocal } from '../utils/weatherUtils';
 import { WeatherData } from '../types/weather';
 
+<<<<<<< HEAD
 export function useWeather(lat: number, lon: number, units: 'metric' | 'imperial', refreshTrigger?: number) {
+=======
+export function useWeather(lat: number, lon: number, units: 'metric' | 'imperial') {
+>>>>>>> f306dcecce0b09ac3714b04dae7e12787b4c93ff
   const [data, setData] = useState<WeatherData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -248,7 +252,11 @@ export function useWeather(lat: number, lon: number, units: 'metric' | 'imperial
     }
     load();
     return () => { cancelled = true; };
+<<<<<<< HEAD
   }, [lat, lon, units, refreshTrigger]);
+=======
+  }, [lat, lon, units]);
+>>>>>>> f306dcecce0b09ac3714b04dae7e12787b4c93ff
 
   return { data, loading, error };
 }
