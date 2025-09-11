@@ -1,0 +1,78 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
+
+    - name: Install dependencies
+      run: |
+        if [ -f package-lock.json ]; then
+          npm ci
+        else
+          npm install
+        fi
+
+    - name: Install Expo CLI
+      run: npm install -g @expo/cli@latest
+
+    - name: Prebuild Android project
+      run: |
+        npx expo prebuild --platform android --clean --no-install
+        
+    - name: List Android project structure
+      run: |
+        echo "Android project structure:"
+        ls -la android/
+        echo "App build.gradle:"
+        cat android/app/build.gradle
+
+    - name: Build Android APK
+      run: |
+        cd android
+        chmod +x ./gradlew
+        echo "Starting Gradle build..."
+        ./gradlew clean --stacktrace
+        ./gradlew assembleRelease --stacktrace --info --no-daemon
+      env:
+        GRADLE_OPTS: "-Xmx4g -XX:MaxMetaspaceSize=512m"
+
+    - name: Upload APK artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: weather-app-apk
+        path: android/app/build/outputs/apk/release/app-release.apk
+
+    - name: Upload build logs on failure
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-logs
+        path: |
+          android/app/build/reports/
+          android/build/reports/
