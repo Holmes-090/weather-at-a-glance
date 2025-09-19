@@ -16,6 +16,7 @@ import { formatPressure, getPressureUnitSymbol } from '../../types/units';
 import { useCurrentLocation } from '../../hooks/useCurrentLocation';
 import { reverseGeocode } from '../../hooks/useGeocoding';
 import Icon from '../Icon';
+import InfoButton from '../InfoButton';
 
 type Mode = 'temperature' | 'precipitation' | 'wind' | 'humidity' | 'pressure';
 
@@ -273,7 +274,14 @@ export default function WeatherTabContent({ mode }: Props) {
               </View>
 
               <Text style={styles.currentMain}>{mainValue}</Text>
-              {!!subValue && <Text style={styles.delta}>{subValue}</Text>}
+              {!!subValue && (
+                <View style={styles.subValueContainer}>
+                  <Text style={styles.delta}>{subValue}</Text>
+                  {mode === 'pressure' && (
+                    <InfoButton infoText="Simplified estimate from barometric pressure — check full forecast for accuracy." />
+                  )}
+                </View>
+              )}
               <Text style={styles.hilo}>{todayLine}</Text>
             </>
           ) : null}
@@ -376,11 +384,16 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     marginTop: 4,
   },
+  subValueContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+  },
   delta: {
     textAlign: 'center',
     color: colors.text,
     opacity: 0.9,
-    marginTop: 8,
     fontSize: 14,
   },
   hilo: {

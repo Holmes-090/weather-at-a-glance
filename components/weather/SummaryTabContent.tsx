@@ -15,6 +15,7 @@ import { useCurrentLocation } from '../../hooks/useCurrentLocation';
 import { reverseGeocode } from '../../hooks/useGeocoding';
 import Icon from '../Icon';
 import LocalTime from '../LocalTime';
+import InfoButton from '../InfoButton';
 
 export default function SummaryTabContent() {
   const { temperatureUnit, pressureUnit, timeFormat, setTemperatureUnit, setPressureUnit, setTimeFormat, setUnits } = useUnits();
@@ -353,9 +354,15 @@ export default function SummaryTabContent() {
                   </Text>
                   <Text style={styles.quickStatLabel}>Pressure</Text>
                   {pressureAnalysis && (
-                    <Text style={styles.quickStatFeelsLike}>
-                      {pressureAnalysis.prediction}
-                    </Text>
+                    <View style={styles.pressurePredictionContainer}>
+                      <Text style={styles.quickStatFeelsLike}>
+                        {pressureAnalysis.prediction}
+                      </Text>
+                      <InfoButton 
+                        infoText="Simplified estimate from barometric pressure — check full forecast for accuracy." 
+                        size={14}
+                      />
+                    </View>
                   )}
                 </View>
 
@@ -704,6 +711,12 @@ const styles = StyleSheet.create({
     opacity: 0.7,
     marginTop: 2,
     textAlign: 'center',
+  },
+  pressurePredictionContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
   },
   highlightsContainer: {
     marginTop: 16,

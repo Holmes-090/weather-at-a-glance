@@ -27,7 +27,7 @@ function PrecipitationChart({ data, width, height }: {
   width: number;
   height: number;
 }) {
-  const padding = { left: 60, right: 20, top: 30, bottom: 40 };
+  const padding = { left: 60, right: 60, top: 30, bottom: 40 };
   const chartWidth = width - padding.left - padding.right;
   const chartHeight = height - padding.top - padding.bottom;
 
@@ -54,13 +54,23 @@ function PrecipitationChart({ data, width, height }: {
     return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
   }).join(' ');
 
-  // Y-axis labels for precipitation chance only
+  // Y-axis labels for precipitation chance (left axis)
   const chanceTicks = 5;
   const chanceLabels = Array.from({ length: chanceTicks }, (_, i) => {
     const value = (100 * i / (chanceTicks - 1));
     return {
       value: Math.round(value),
       y: padding.top + chartHeight - (i / (chanceTicks - 1)) * chartHeight
+    };
+  });
+
+  // Secondary Y-axis labels for precipitation amount (right axis)
+  const precipTicks = 5;
+  const precipLabels = Array.from({ length: precipTicks }, (_, i) => {
+    const value = (maxPrecipMm * i / (precipTicks - 1));
+    return {
+      value: value,
+      y: padding.top + chartHeight - (i / (precipTicks - 1)) * chartHeight
     };
   });
 
@@ -120,26 +130,8 @@ function PrecipitationChart({ data, width, height }: {
         );
       })}
 
-      {/* Precipitation amount labels above bars - rendered last to be on top */}
-      {bars.map((bar, index) => (
-        bar.precipMm > 0 && (
-          <SvgText
-            key={index}
-            x={bar.x + bar.width / 2}
-            y={Math.max(bar.y - 8, padding.top + 15)} // Consistent spacing, min distance from top
-            fontSize="11"
-            fill="rgba(255,255,255,0.95)"
-            textAnchor="middle"
-            fontWeight="700"
-            stroke="rgba(0,0,0,0.3)"
-            strokeWidth="0.5"
-          >
-            {bar.precipMm.toFixed(1)}
-          </SvgText>
-        )
-      ))}
 
-      {/* Y-axis labels (precipitation chance only) */}
+      {/* Y-axis labels (precipitation chance - left axis) */}
       {chanceLabels.map((label, i) => (
         <SvgText
           key={i}
@@ -150,6 +142,20 @@ function PrecipitationChart({ data, width, height }: {
           textAnchor="end"
         >
           {label.value}%
+        </SvgText>
+      ))}
+
+      {/* Secondary Y-axis labels (precipitation amount - right axis) */}
+      {precipLabels.map((label, i) => (
+        <SvgText
+          key={`precip-${i}`}
+          x={width - padding.right + 10}
+          y={label.y + 4}
+          fontSize="12"
+          fill="rgba(74,144,226,0.9)"
+          textAnchor="start"
+        >
+          {label.value.toFixed(1)}
         </SvgText>
       ))}
 
@@ -171,7 +177,7 @@ function PrecipitationChart({ data, width, height }: {
         );
       })}
 
-      {/* Y-axis title */}
+      {/* Y-axis title (left axis) */}
       <SvgText
         x={20}
         y={height / 2}
@@ -182,6 +188,19 @@ function PrecipitationChart({ data, width, height }: {
       >
         Chance (%)
       </SvgText>
+
+      {/* Secondary Y-axis title (right axis) */}
+      <SvgText
+        x={width - 20}
+        y={height / 2}
+        fontSize="12"
+        fill="rgba(74,144,226,0.9)"
+        textAnchor="middle"
+        transform={`rotate(90 ${width - 20} ${height / 2})`}
+      >
+        Amount (mm)
+      </SvgText>
+
     </Svg>
   );
 }
