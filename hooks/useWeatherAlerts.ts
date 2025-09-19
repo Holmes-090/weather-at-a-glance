@@ -5,11 +5,7 @@ import { WeatherAlertData } from '../components/weather/WeatherAlert';
 // Simple in-memory storage for mobile platforms (until AsyncStorage is added)
 let mobileStorageCache: Set<string> = new Set();
 
-<<<<<<< HEAD
 export function useWeatherAlerts(lat: number, lon: number, refreshTrigger?: number) {
-=======
-export function useWeatherAlerts(lat: number, lon: number) {
->>>>>>> f306dcecce0b09ac3714b04dae7e12787b4c93ff
   const [alerts, setAlerts] = useState<WeatherAlertData[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -95,11 +91,7 @@ export function useWeatherAlerts(lat: number, lon: number) {
 
     fetchAlerts();
     return () => { cancelled = true; };
-<<<<<<< HEAD
   }, [lat, lon, refreshTrigger]);
-=======
-  }, [lat, lon]);
->>>>>>> f306dcecce0b09ac3714b04dae7e12787b4c93ff
 
   // Filter out dismissed alerts
   const activeAlerts = alerts.filter(alert => !dismissedAlerts.has(alert.id));
