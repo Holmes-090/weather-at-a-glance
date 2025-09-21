@@ -4,11 +4,9 @@ import { colors } from '../../styles/commonStyles';
 import SearchBar from '../SearchBar';
 import UnitToggleSheet from '../UnitToggleSheet';
 import WeatherBackground from './WeatherBackground';
-import WeatherAlert from './WeatherAlert';
 import { useUnits } from '../UnitsContext';
 import { useLocation } from '../LocationContext';
-import { useWeather } from '../../hooks/useWeather';
-import { useWeatherAlerts } from '../../hooks/useWeatherAlerts';
+import { useWeatherData } from '../../contexts/WeatherDataContext';
 import { analyzePressure, formatUVIndex, formatUVIndexValue, getUVIndexDescription, convertVisibility, formatDewPoint, formatAirQualityValue, getAirQualityDescription, calculateHourlyPressureTrend, calculate3HourPressureTrend } from '../../utils/weatherUtils';
 import { formatPressure } from '../../types/units';
 import { useCurrentLocation } from '../../hooks/useCurrentLocation';
@@ -22,22 +20,10 @@ export default function SummaryTabContent() {
   const { location, setLocation, isInitializing } = useLocation();
   const sheetRef = useRef<any>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0);
   const [showHourlyForecast, setShowHourlyForecast] = useState(false);
 
-  // Don't fetch weather data if location is not yet determined
-  const shouldFetchWeather = location && !isInitializing;
-  const { data, loading, error } = useWeather(
-    shouldFetchWeather ? location.latitude : 0,
-    shouldFetchWeather ? location.longitude : 0,
-    temperatureUnit,
-    refreshKey
-  );
-  const { alerts, dismissAlert } = useWeatherAlerts(
-    shouldFetchWeather ? location.latitude : 0,
-    shouldFetchWeather ? location.longitude : 0,
-    refreshKey
-  );
+  // Use centralized weather data
+  const { weatherData: data, loading, error, refreshWeather } = useWeatherData();
   
   const currentLocation = useCurrentLocation();
   const [locationLoading, setLocationLoading] = useState(false);
@@ -203,22 +189,10 @@ export default function SummaryTabContent() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    // Force a refresh by updating the refresh key
-    setRefreshKey(prev => prev + 1);
-    
-    // Wait a bit longer to ensure data is refreshed
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 2000);
-  }, []);
+    await refreshWeather();
+    setRefreshing(false);
+  }, [refreshWeather]);
 
-  // Add refreshKey to force useWeather to refetch
-  // This is a workaround since useWeather doesn't expose a refresh method
-  React.useEffect(() => {
-    if (refreshKey > 0) {
-      // The refresh will happen automatically due to the component re-render
-    }
-  }, [refreshKey]);
   return (
     <View style={{ flex: 1 }}>
       <WeatherBackground
@@ -259,18 +233,6 @@ export default function SummaryTabContent() {
           />
         </View>
 
-        {/* Weather Alerts */}
-        {alerts.length > 0 && (
-          <View style={styles.alertsContainer}>
-            {alerts.map((alert) => (
-              <WeatherAlert
-                key={alert.id}
-                alert={alert}
-                onDismiss={dismissAlert}
-              />
-            ))}
-          </View>
-        )}
 
         {/* Current Weather Summary Card */}
         <View style={styles.currentCard}>
@@ -613,9 +575,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 6,
     paddingVertical: 6,
-  },
-  alertsContainer: {
-    marginTop: 4,
   },
   currentCard: {
     backgroundColor: 'rgba(16, 24, 36, 0.35)',

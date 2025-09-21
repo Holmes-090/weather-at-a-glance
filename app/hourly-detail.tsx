@@ -7,6 +7,8 @@ import { HourForecast } from '../types/weather';
 import { Ionicons } from '@expo/vector-icons';
 import CompassRose from '../components/weather/CompassRose';
 import HumidityBar from '../components/weather/HumidityBar';
+import { useUnits } from '../components/UnitsContext';
+import { getPressureUnitSymbol, formatPressure } from '../types/units';
 
 type Mode = 'temperature' | 'precipitation' | 'wind' | 'humidity' | 'pressure';
 
@@ -206,14 +208,25 @@ function PrecipitationChart({ data, width, height }: {
 }
 
 // Custom SVG Chart Component for other modes
-function SimpleLineChart({ data, width, height, mode, unit }: {
+function SimpleLineChart({ data, width, height, mode, unit, pressureUnit }: {
   data: { x: number; y: number; label: string }[];
   width: number;
   height: number;
   mode: Mode;
   unit: string;
+  pressureUnit?: string;
 }) {
-  const padding = { left: 60, right: 20, top: 20, bottom: 40 };
+  // Adjust left padding based on unit length to prevent label cutoff
+  const getLeftPadding = () => {
+    if (mode === 'pressure' && pressureUnit === 'inHg') {
+      return 80; // More space for longer inHg labels like "29.85inHg"
+    } else if (mode === 'pressure' && pressureUnit === 'kPa') {
+      return 70; // Slightly more space for kPa labels like "101.3kPa"
+    }
+    return 60; // Default padding for other units
+  };
+  
+  const padding = { left: getLeftPadding(), right: 20, top: 20, bottom: 40 };
   const chartWidth = width - padding.left - padding.right;
   const chartHeight = height - padding.top - padding.bottom;
 
@@ -253,8 +266,17 @@ function SimpleLineChart({ data, width, height, mode, unit }: {
   const yTicks = 5;
   const yLabels = Array.from({ length: yTicks }, (_, i) => {
     const value = scaledMinY + (scaledRange * i / (yTicks - 1));
+    // Use appropriate precision based on unit
+    let formattedValue;
+    if (mode === 'pressure' && pressureUnit === 'inHg') {
+      formattedValue = value.toFixed(2); // 2 decimal places for inHg
+    } else if (mode === 'pressure' && pressureUnit === 'kPa') {
+      formattedValue = value.toFixed(1); // 1 decimal place for kPa
+    } else {
+      formattedValue = Math.round(value).toString(); // Integer for hPa and other units
+    }
     return {
-      value: Math.round(value),
+      value: formattedValue,
       y: padding.top + chartHeight - (i / (yTicks - 1)) * chartHeight
     };
   });
@@ -265,7 +287,7 @@ function SimpleLineChart({ data, width, height, mode, unit }: {
       case 'precipitation': return 'mm';
       case 'wind': return unit;
       case 'humidity': return '%';
-      case 'pressure': return 'hPa';
+      case 'pressure': return pressureUnit || 'hPa';
       default: return '';
     }
   };
@@ -354,6 +376,7 @@ export default function HourlyDetailScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const { width } = Dimensions.get('window');
+  const { pressureUnit } = useUnits();
   
   // Parse the hourly data and mode from params
   const hourlyData: HourForecast[] = params.hourlyData ? JSON.parse(params.hourlyData as string) : [];
@@ -389,7 +412,20 @@ export default function HourlyDetailScreen() {
           yValue = hour.humidity || 0;
           break;
         case 'pressure':
-          yValue = hour.pressure || 1013;
+          // Convert pressure to selected unit for chart display
+          const pressureHPa = hour.pressure || 1013;
+          switch (pressureUnit) {
+            case 'inHg':
+              yValue = pressureHPa * 0.02953;
+              break;
+            case 'kPa':
+              yValue = pressureHPa / 10;
+              break;
+            case 'hPa':
+            default:
+              yValue = pressureHPa;
+              break;
+          }
           break;
       }
       return {
@@ -403,7 +439,7 @@ export default function HourlyDetailScreen() {
     console.log(`Hourly ${mode} data:`, data.map(d => d.y));
     
     return data;
-  }, [hourlyData, mode]);
+  }, [hourlyData, mode, pressureUnit]);
 
   // Prepare precipitation-specific chart data
   const precipitationData = useMemo(() => {
@@ -434,7 +470,7 @@ export default function HourlyDetailScreen() {
       case 'precipitation': return 'mm';
       case 'wind': return unit;
       case 'humidity': return '%';
-      case 'pressure': return 'hPa';
+      case 'pressure': return getPressureUnitSymbol(pressureUnit);
       default: return '';
     }
   };
@@ -485,6 +521,7 @@ export default function HourlyDetailScreen() {
                 height={280}
                 mode={mode}
                 unit={getYAxisLabel()}
+                pressureUnit={getPressureUnitSymbol(pressureUnit)}
               />
             )}
           </View>
@@ -543,7 +580,7 @@ export default function HourlyDetailScreen() {
                   )}
                   
                   {mode === 'pressure' && (
-                    <Text style={styles.hourlyValue}>{Math.round(hour.pressure ?? 1013)} hPa</Text>
+                    <Text style={styles.hourlyValue}>{formatPressure(hour.pressure ?? 1013, pressureUnit)}</Text>
                   )}
                 </View>
               ))}

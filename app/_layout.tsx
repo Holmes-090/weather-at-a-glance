@@ -7,6 +7,9 @@ import { commonStyles } from '../styles/commonStyles';
 import { useEffect, useState } from 'react';
 import { setupErrorLogging } from '../utils/errorLogger';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { UnitsProvider } from '../components/UnitsContext';
+import { LocationProvider } from '../components/LocationContext';
+import { WeatherDataProvider } from '../contexts/WeatherDataContext';
 
 const STORAGE_KEY = 'emulated_device';
 
@@ -54,12 +57,18 @@ export default function RootLayout() {
             paddingRight: insetsToUse.right,
          }]}>
           <StatusBar style="light" />
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              animation: 'default',
-            }}
-          />
+          <UnitsProvider>
+            <LocationProvider>
+              <WeatherDataProvider>
+                <Stack
+                  screenOptions={{
+                    headerShown: false,
+                    animation: 'default',
+                  }}
+                />
+              </WeatherDataProvider>
+            </LocationProvider>
+          </UnitsProvider>
         </SafeAreaView>
       </SafeAreaProvider>
     </GestureHandlerRootView>

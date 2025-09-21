@@ -2,14 +2,10 @@
 import { Tabs } from 'expo-router';
 import { colors } from '../../styles/commonStyles';
 import { Ionicons } from '@expo/vector-icons';
-import { UnitsProvider } from '../../components/UnitsContext';
-import { LocationProvider } from '../../components/LocationContext';
 
 export default function TabsLayout() {
   return (
-    <UnitsProvider>
-      <LocationProvider>
-        <Tabs
+    <Tabs
           screenOptions={{
             headerShown: false,
             tabBarStyle: {
@@ -62,8 +58,6 @@ export default function TabsLayout() {
               tabBarIcon: ({ color, size }) => <Ionicons name="speedometer" color={color} size={size} />,
             }}
           />
-        </Tabs>
-      </LocationProvider>
-    </UnitsProvider>
+    </Tabs>
   );
 }
