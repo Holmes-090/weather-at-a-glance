@@ -7,6 +7,8 @@ import WeatherBackground from './WeatherBackground';
 import { useUnits } from '../UnitsContext';
 import { useLocation } from '../LocationContext';
 import { useWeatherData } from '../../contexts/WeatherDataContext';
+import { useCanadianWeatherAlerts } from '../../hooks/useCanadianWeatherAlerts';
+import WeatherAlert from './WeatherAlert';
 import { analyzePressure, formatUVIndex, formatUVIndexValue, getUVIndexDescription, convertVisibility, formatDewPoint, formatAirQualityValue, getAirQualityDescription, calculateHourlyPressureTrend, calculate3HourPressureTrend } from '../../utils/weatherUtils';
 import { formatPressure } from '../../types/units';
 import { useCurrentLocation } from '../../hooks/useCurrentLocation';
@@ -20,10 +22,18 @@ export default function SummaryTabContent() {
   const { location, setLocation, isInitializing } = useLocation();
   const sheetRef = useRef<any>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [showHourlyForecast, setShowHourlyForecast] = useState(false);
 
   // Use centralized weather data
   const { weatherData: data, loading, error, refreshWeather } = useWeatherData();
+  
+  // Use Canadian weather alerts (only for Canadian locations)
+  const { alerts: canadianAlerts, dismissAlert: dismissCanadianAlert } = useCanadianWeatherAlerts(
+    location?.latitude || 0,
+    location?.longitude || 0,
+    refreshKey
+  );
   
   const currentLocation = useCurrentLocation();
   const [locationLoading, setLocationLoading] = useState(false);
@@ -190,6 +200,8 @@ export default function SummaryTabContent() {
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await refreshWeather();
+    // Also refresh Canadian alerts
+    setRefreshKey(prev => prev + 1);
     setRefreshing(false);
   }, [refreshWeather]);
 
@@ -233,6 +245,18 @@ export default function SummaryTabContent() {
           />
         </View>
 
+        {/* Canadian Weather Alerts */}
+        {canadianAlerts.length > 0 && (
+          <View style={styles.alertsContainer}>
+            {canadianAlerts.map((alert) => (
+              <WeatherAlert
+                key={alert.id}
+                alert={alert}
+                onDismiss={dismissCanadianAlert}
+              />
+            ))}
+          </View>
+        )}
 
         {/* Current Weather Summary Card */}
         <View style={styles.currentCard}>
@@ -567,6 +591,9 @@ const styles = StyleSheet.create({
   },
   topRow: {
     width: '100%',
+  },
+  alertsContainer: {
+    marginTop: 8,
   },
   currentLocationButton: {
     width: 32,

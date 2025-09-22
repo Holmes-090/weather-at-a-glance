@@ -88,39 +88,86 @@ export function useWeather(lat: number, lon: number, units: 'metric' | 'imperial
           pressure: hourlyPressure[i],
         }));
 
-        // Index for now - need to find the current or next hour
-        let nowIndex = hourlyTimes.findIndex((t) => t === nowIso);
+        // Find the current hour index to start from
+        const currentTime = new Date(nowIso);
         
-        // If exact match not found, find the current hour by comparing hour values
-        if (nowIndex === -1) {
-          const currentTime = new Date(nowIso);
+        // More precise approach: find the hour that matches the current hour
+        // First, try to find an exact hour match (same hour, same day)
+        let currentHourIndex = hourlyTimes.findIndex((time) => {
+          const hourTime = new Date(time);
           const currentHour = currentTime.getHours();
+          const hourTimeHour = hourTime.getHours();
+          const currentDate = currentTime.getDate();
+          const hourTimeDate = hourTime.getDate();
           
-          nowIndex = hourlyTimes.findIndex((t) => {
-            const hourTime = new Date(t);
-            return hourTime.getHours() === currentHour && 
-                   hourTime.getDate() === currentTime.getDate();
+          // Match same hour and same day
+          return hourTimeHour === currentHour && hourTimeDate === currentDate;
+        });
+        
+        // If no exact match, try to find the current hour with a 1-hour tolerance
+        if (currentHourIndex === -1) {
+          currentHourIndex = hourlyTimes.findIndex((time) => {
+            const hourTime = new Date(time);
+            const currentHour = currentTime.getHours();
+            const hourTimeHour = hourTime.getHours();
+            const currentDate = currentTime.getDate();
+            const hourTimeDate = hourTime.getDate();
+            
+            // Match within 1 hour and same day
+            return Math.abs(hourTimeHour - currentHour) <= 1 && hourTimeDate === currentDate;
           });
-          
-          // If still not found, find the next available hour
-          if (nowIndex === -1) {
-            nowIndex = hourlyTimes.findIndex((t) => {
-              const hourTime = new Date(t);
-              return hourTime >= currentTime;
-            });
-          }
         }
         
+        // If no exact match, find the next available hour
+        if (currentHourIndex === -1) {
+          currentHourIndex = hourlyTimes.findIndex((time) => {
+            const hourTime = new Date(time);
+            return hourTime >= currentTime;
+          });
+        }
+        
+        // If still not found, find any future hour
+        if (currentHourIndex === -1) {
+          currentHourIndex = hourlyTimes.findIndex((time) => {
+            const hourTime = new Date(time);
+            return hourTime > currentTime;
+          });
+        }
+        
+        // If still not found, start from index 0
+        const startIndex = currentHourIndex >= 0 ? currentHourIndex : 0;
+        
+        console.log('Hourly filtering debug (useWeather):', {
+          currentTime: currentTime.toISOString(),
+          currentTimeLocal: currentTime.toLocaleString(),
+          currentTimeUTC: currentTime.toUTCString(),
+          startIndex,
+          firstHour: hourlyTimes[startIndex],
+          firstHourTime: new Date(hourlyTimes[startIndex]).toISOString(),
+          firstHourLocal: new Date(hourlyTimes[startIndex]).toLocaleString(),
+          firstHourUTC: new Date(hourlyTimes[startIndex]).toUTCString(),
+          timezone: tz,
+          nowIso: nowIso,
+          comparison: {
+            currentHour: currentTime.getHours(),
+            firstHour: new Date(hourlyTimes[startIndex]).getHours(),
+            currentDate: currentTime.getDate(),
+            firstDate: new Date(hourlyTimes[startIndex]).getDate()
+          }
+        });
+        
         // Filter hourly data to start from current hour (no past data)
-        const currentHourIndex = Math.max(0, nowIndex);
-        const futureHours = hours.slice(currentHourIndex, currentHourIndex + 24);
+        const futureHours = hours.slice(startIndex, startIndex + 24).map((hour, i) => ({
+          ...hour,
+          label: i === 0 ? 'Now' : hour.label
+        }));
 
         // Compute yesterday comparisons
         function deltaFor(arr: number[]): number | null {
           try {
-            if (nowIndex >= 24) {
-              const yIdx = nowIndex - 24;
-              const nowV = arr[nowIndex];
+            if (startIndex >= 24) {
+              const yIdx = startIndex - 24;
+              const nowV = arr[startIndex];
               const yV = arr[yIdx];
               if (typeof nowV === 'number' && typeof yV === 'number') return nowV - yV;
             }
@@ -168,8 +215,10 @@ export function useWeather(lat: number, lon: number, units: 'metric' | 'imperial
         };
 
         // Filter daily data to start from today (no past days)
-        const todayDate = new Date();
-        todayDate.setHours(0, 0, 0, 0); // Start of today
+        // Use the API's current time to determine what "today" is in the user's timezone
+        const apiCurrentTime = new Date(nowIso);
+        const todayDate = new Date(apiCurrentTime);
+        todayDate.setHours(0, 0, 0, 0); // Start of today in user's timezone
         
         const futureDays = dailyDates
           .map((d: string, i: number) => ({
@@ -207,23 +256,23 @@ export function useWeather(lat: number, lon: number, units: 'metric' | 'imperial
           timezone: tz,
           current: {
             temperature: currentTemp,
-            apparentTemperature: nowIndex >= 0 ? hourlyApparentTemps[nowIndex] : hourlyApparentTemps[0],
+            apparentTemperature: startIndex >= 0 ? hourlyApparentTemps[startIndex] : hourlyApparentTemps[0],
             code: currentCode,
             icon: mapWeatherCodeToIcon(currentCode, night),
             description: condition.replace('-', ' '),
             isNight: night,
             condition,
             deltaFromYesterday,
-            precipitationMm: nowIndex >= 0 ? hourlyPrecip[nowIndex] : hourlyPrecip[0],
-            precipitationProb: nowIndex >= 0 ? hourlyPrecipProb[nowIndex] : hourlyPrecipProb[0],
-            windSpeed: nowIndex >= 0 ? hourlyWind[nowIndex] : hourlyWind[0],
-            windDirection: nowIndex >= 0 ? hourlyWindDir[nowIndex] : hourlyWindDir[0],
-            humidity: nowIndex >= 0 ? hourlyHumidity[nowIndex] : hourlyHumidity[0],
-            pressure: nowIndex >= 0 ? hourlyPressure[nowIndex] : hourlyPressure[0],
-            uvIndex: nowIndex >= 0 ? hourlyUVIndex[nowIndex] : hourlyUVIndex[0],
-            dewPoint: nowIndex >= 0 ? hourlyDewPoint[nowIndex] : hourlyDewPoint[0],
-            visibility: nowIndex >= 0 ? hourlyVisibility[nowIndex] : hourlyVisibility[0],
-            cloudCover: nowIndex >= 0 ? hourlyCloudCover[nowIndex] : hourlyCloudCover[0],
+            precipitationMm: startIndex >= 0 ? hourlyPrecip[startIndex] : hourlyPrecip[0],
+            precipitationProb: startIndex >= 0 ? hourlyPrecipProb[startIndex] : hourlyPrecipProb[0],
+            windSpeed: startIndex >= 0 ? hourlyWind[startIndex] : hourlyWind[0],
+            windDirection: startIndex >= 0 ? hourlyWindDir[startIndex] : hourlyWindDir[0],
+            humidity: startIndex >= 0 ? hourlyHumidity[startIndex] : hourlyHumidity[0],
+            pressure: startIndex >= 0 ? hourlyPressure[startIndex] : hourlyPressure[0],
+            uvIndex: startIndex >= 0 ? hourlyUVIndex[startIndex] : hourlyUVIndex[0],
+            dewPoint: startIndex >= 0 ? hourlyDewPoint[startIndex] : hourlyDewPoint[0],
+            visibility: startIndex >= 0 ? hourlyVisibility[startIndex] : hourlyVisibility[0],
+            cloudCover: startIndex >= 0 ? hourlyCloudCover[startIndex] : hourlyCloudCover[0],
             // Air Quality data
             europeanAqi: airQualityData?.current?.european_aqi,
             pm2_5: airQualityData?.current?.pm2_5,

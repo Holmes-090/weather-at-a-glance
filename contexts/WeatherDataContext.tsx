@@ -161,18 +161,87 @@ async function fetchWeatherData(lat: number, lon: number, units: 'metric' | 'imp
   const hourlyCloudcover: number[] = json.hourly.cloudcover ?? [];
 
 
-  // Process hourly data (next 24 hours)
-  const futureHours = hourlyTimes.slice(0, 24).map((time, i) => ({
+  // Process hourly data (next 24 hours from current time)
+  // Find the current hour index to start from
+  const currentTime = new Date(nowIso);
+  
+  // More precise approach: find the hour that matches the current hour
+  // First, try to find an exact hour match (same hour, same day)
+  let currentHourIndex = hourlyTimes.findIndex((time) => {
+    const hourTime = new Date(time);
+    const currentHour = currentTime.getHours();
+    const hourTimeHour = hourTime.getHours();
+    const currentDate = currentTime.getDate();
+    const hourTimeDate = hourTime.getDate();
+    
+    // Match same hour and same day
+    return hourTimeHour === currentHour && hourTimeDate === currentDate;
+  });
+  
+  // If no exact match, try to find the current hour with a 1-hour tolerance
+  if (currentHourIndex === -1) {
+    currentHourIndex = hourlyTimes.findIndex((time) => {
+      const hourTime = new Date(time);
+      const currentHour = currentTime.getHours();
+      const hourTimeHour = hourTime.getHours();
+      const currentDate = currentTime.getDate();
+      const hourTimeDate = hourTime.getDate();
+      
+      // Match within 1 hour and same day
+      return Math.abs(hourTimeHour - currentHour) <= 1 && hourTimeDate === currentDate;
+    });
+  }
+  
+  // If no exact match, find the next available hour
+  if (currentHourIndex === -1) {
+    currentHourIndex = hourlyTimes.findIndex((time) => {
+      const hourTime = new Date(time);
+      return hourTime >= currentTime;
+    });
+  }
+  
+  // If still not found, find any future hour
+  if (currentHourIndex === -1) {
+    currentHourIndex = hourlyTimes.findIndex((time) => {
+      const hourTime = new Date(time);
+      return hourTime > currentTime;
+    });
+  }
+  
+  // If still not found, start from index 0
+  const startIndex = currentHourIndex >= 0 ? currentHourIndex : 0;
+  
+  console.log('Hourly filtering debug:', {
+    currentTime: currentTime.toISOString(),
+    currentTimeLocal: currentTime.toLocaleString(),
+    currentTimeUTC: currentTime.toUTCString(),
+    startIndex,
+    firstHour: hourlyTimes[startIndex],
+    firstHourTime: new Date(hourlyTimes[startIndex]).toISOString(),
+    firstHourLocal: new Date(hourlyTimes[startIndex]).toLocaleString(),
+    firstHourUTC: new Date(hourlyTimes[startIndex]).toUTCString(),
+    timezone: tz,
+    hourlyTimesSample: hourlyTimes.slice(0, 3),
+    nowIso: nowIso,
+    comparison: {
+      currentHour: currentTime.getHours(),
+      firstHour: new Date(hourlyTimes[startIndex]).getHours(),
+      currentDate: currentTime.getDate(),
+      firstDate: new Date(hourlyTimes[startIndex]).getDate()
+    }
+  });
+  
+  const futureHours = hourlyTimes.slice(startIndex, startIndex + 24).map((time, i) => ({
     time,
-    label: formatHourLabel(time),
-    temperature: hourlyTemps[i] ?? 0,
-    icon: mapWeatherCodeToIcon(hourlyCodes[i] ?? 0, night),
-    precipitationMm: hourlyPrecip[i] ?? null,
-    precipitationProb: hourlyPrecipProb[i] ?? null,
-    windSpeed: hourlyWind[i] ?? null,
-    windDirection: hourlyWindDir[i] ?? null,
-    humidity: hourlyHumidity[i] ?? null,
-    pressure: hourlyPressure[i] ?? null,
+    label: i === 0 ? 'Now' : formatHourLabel(time),
+    temperature: hourlyTemps[startIndex + i] ?? 0,
+    icon: mapWeatherCodeToIcon(hourlyCodes[startIndex + i] ?? 0, night),
+    precipitationMm: hourlyPrecip[startIndex + i] ?? null,
+    precipitationProb: hourlyPrecipProb[startIndex + i] ?? null,
+    windSpeed: hourlyWind[startIndex + i] ?? null,
+    windDirection: hourlyWindDir[startIndex + i] ?? null,
+    humidity: hourlyHumidity[startIndex + i] ?? null,
+    pressure: hourlyPressure[startIndex + i] ?? null,
   }));
 
   // Daily mapping
@@ -189,30 +258,50 @@ async function fetchWeatherData(lat: number, lon: number, units: 'metric' | 'imp
   const dailyHumidityMean: number[] = json.daily.relative_humidity_2m_mean ?? [];
   const dailyUvMax: number[] = json.daily.uv_index_max ?? [];
 
-  const daily = dailyTimes.map((time, i) => {
-    // Calculate daily pressure mean from hourly data
-    // Each day has 24 hours, so we need to get the 24 hours for this day
-    const dayStartIndex = i * 24;
-    const dayEndIndex = dayStartIndex + 24;
-    const dayPressures = hourlyPressure.slice(dayStartIndex, dayEndIndex).filter(p => p !== null && p !== undefined);
-    const pressureMean = dayPressures.length > 0 ? dayPressures.reduce((sum, p) => sum + p, 0) / dayPressures.length : null;
-
-    return {
-      date: time,
-      label: formatDayLabel(time),
-      max: dailyMaxTemps[i] ?? 0,
-      min: dailyMinTemps[i] ?? 0,
-      icon: mapWeatherCodeToIcon(dailyCodes[i] ?? 0, false),
-      precipSumMm: dailyPrecipSum[i] ?? null,
-      precipProbMax: dailyPrecipProbMax[i] ?? null,
-      windSpeedMax: dailyWindMax[i] ?? null,
-      windDirectionDominant: dailyWindDir[i] ?? null,
-      humidityMean: dailyHumidityMean[i] ?? null,
-      pressureMean: pressureMean,
-      sunrise: dailySunrise[i] ?? null,
-      sunset: dailySunset[i] ?? null,
-    };
+  // Filter daily data to start from today (no past days)
+  // Use the API's current time to determine what "today" is in the user's timezone
+  const apiCurrentTime = new Date(nowIso);
+  const todayDate = new Date(apiCurrentTime);
+  todayDate.setHours(0, 0, 0, 0); // Start of today in user's timezone
+  
+  console.log('Date filtering debug:', {
+    apiCurrentTime: apiCurrentTime.toISOString(),
+    todayDate: todayDate.toISOString(),
+    dailyTimes: dailyTimes.slice(0, 3) // Show first 3 days for debugging
   });
+  
+  const futureDays = dailyTimes
+    .map((time, i) => {
+      // Calculate daily pressure mean from hourly data
+      // Each day has 24 hours, so we need to get the 24 hours for this day
+      const dayStartIndex = i * 24;
+      const dayEndIndex = dayStartIndex + 24;
+      const dayPressures = hourlyPressure.slice(dayStartIndex, dayEndIndex).filter(p => p !== null && p !== undefined);
+      const pressureMean = dayPressures.length > 0 ? dayPressures.reduce((sum, p) => sum + p, 0) / dayPressures.length : null;
+
+      return {
+        date: time,
+        label: formatDayLabel(time),
+        max: dailyMaxTemps[i] ?? 0,
+        min: dailyMinTemps[i] ?? 0,
+        icon: mapWeatherCodeToIcon(dailyCodes[i] ?? 0, false),
+        precipSumMm: dailyPrecipSum[i] ?? null,
+        precipProbMax: dailyPrecipProbMax[i] ?? null,
+        windSpeedMax: dailyWindMax[i] ?? null,
+        windDirectionDominant: dailyWindDir[i] ?? null,
+        humidityMean: dailyHumidityMean[i] ?? null,
+        pressureMean: pressureMean,
+        sunrise: dailySunrise[i] ?? null,
+        sunset: dailySunset[i] ?? null,
+        dateObj: new Date(time), // Add for filtering
+      };
+    })
+    .filter(day => day.dateObj >= todayDate) // Only include today and future days
+    .slice(0, 7) // Take up to 7 days
+    .map(({ dateObj, ...day }) => day); // Remove helper dateObj
+
+  console.log('Filtered daily data:', futureDays.map(d => ({ date: d.date, label: d.label })));
+  const daily = futureDays;
 
   // Today's data (first day)
   const today = daily[0] ? { max: daily[0].max, min: daily[0].min } : { max: 0, min: 0 };
